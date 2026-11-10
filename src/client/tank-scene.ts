@@ -1,7 +1,7 @@
 "use client";
 
 import * as Phaser from "phaser";
-import { FISH_TEXTURES, REWARDS, SPECIES, STAGES, TIER_COLORS } from "@/shared/config";
+import { FISH_TEXTURES, MAX_STAGE, NAME_STAGE, REWARDS, SMALL_STAGE, SPECIES, STAGES, TIER_COLORS } from "@/shared/config";
 import type { EggView, FishView, Fx, Snapshot } from "@/shared/protocol";
 import type { EngineClient } from "./engine-client";
 import { EnvLayer } from "./env-layer";
@@ -411,7 +411,7 @@ class TankScene extends Phaser.Scene {
   }
 
   private colorFor(view: FishView) {
-    return view.stage === 1 ? SPECIES[view.species].fryTint : view.variant;
+    return this.texFor(view) === "fish-fry-base" ? SPECIES[view.species].fryTint : view.variant;
   }
 
   private addFish(view: FishView, now: number) {
@@ -509,7 +509,7 @@ class TankScene extends Phaser.Scene {
   }
 
   private pickY(stage: number) {
-    return stage <= 2 ? rand(950, SWIM_BOTTOM - 20) : rand(SWIM_TOP + 80, SWIM_BOTTOM - 40);
+    return stage <= 4 ? rand(950, SWIM_BOTTOM - 20) : rand(SWIM_TOP + 80, SWIM_BOTTOM - 40);
   }
 
   private pickTarget(s: FishSprite) {
@@ -535,7 +535,7 @@ class TankScene extends Phaser.Scene {
       // Nổi lên nhưng dừng dưới hàng trứng.
       s.y = Math.max(SWIM_TOP + 140, s.y + s.vy * sec);
     } else {
-      const speed = (55 + view.stage * 9) * (view.hunger < 30 ? 0.55 : 1) * (s.chaseUntil > this.time.now ? 2.4 : 1);
+      const speed = (55 + (view.stage / MAX_STAGE) * 63) * (view.hunger < 30 ? 0.55 : 1) * (s.chaseUntil > this.time.now ? 2.4 : 1);
       const dx = s.tx - s.x;
       const dy = s.ty - s.y;
       const dist = Math.hypot(dx, dy);
@@ -576,8 +576,8 @@ class TankScene extends Phaser.Scene {
     const recent = this.time.now - this.localTime(view.activeAt) < 10_000;
     const vip = view.tier !== "common" || view.crowned;
     // Đông cá thì chỉ giữ chi tiết cho cá vừa được chủ tương tác, cá đói, cá quà và vua bể.
-    const showName = crowd <= 35 || view.stage >= 4 || vip || recent;
-    const showBars = recent || view.hunger < 40 || view.status === "exhausted" || (crowd <= 12 && view.stage >= 3);
+    const showName = crowd <= 35 || view.stage >= NAME_STAGE || vip || recent;
+    const showBars = recent || view.hunger < 40 || view.status === "exhausted" || (crowd <= 12 && view.stage >= SMALL_STAGE);
     // Mỗi loài cao khác nhau (cá vàng tròn, cá neon thon): nhãn đặt sát mép trên của loài đó.
     const top = s.y - s.size * SPECIES[view.species].labelTop * s.pop - 6;
     s.label.setPosition(s.x, top);

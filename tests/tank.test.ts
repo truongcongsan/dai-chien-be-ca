@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COMMON_SPECIES, DEFAULT_RULES, MAX_STAGE, SPECIES, STAGES, parseCommand } from "../src/shared/config";
+import { COMMON_SPECIES, DEFAULT_RULES, GIFT_HATCH_STAGE, LEGACY_STAGE_MAP, MAX_STAGE, SMALL_STAGE, SPECIES, STAGES, parseCommand } from "../src/shared/config";
 import { Tank } from "../server/tank";
 
 /** Bể yên tĩnh: không thời tiết/thử thách tự động, không đêm — để test không phụ thuộc giờ và may rủi. */
@@ -247,6 +247,35 @@ describe("vương miện", () => {
   });
 });
 
+describe("15 cấp", () => {
+  it("có 15 cấp, mỗi cấp to hơn cấp trước, ảnh mỗi loài đủ cho mọi cấp", () => {
+    expect(MAX_STAGE).toBe(15);
+    for (let s = 2; s <= MAX_STAGE; s++) expect(STAGES[s].size).toBeGreaterThan(STAGES[s - 1].size);
+    for (const sp of Object.values(SPECIES)) {
+      expect(sp.textures).toHaveLength(MAX_STAGE + 1);
+      expect(sp.textures[1]).toBe("fish-fry-base");
+    }
+    expect(SPECIES.dragonfish.textures[MAX_STAGE]).toBe("dragonfish-king");
+  });
+
+  it("bản lưu 7 cấp cũ được đổi sang 15 cấp, giữ % tiến độ", () => {
+    const old = { fish: [] as unknown[], owners: [] as unknown[], totals: { hatched: 0, died: 0, fed: 0 }, nextId: 10 };
+    const base = { ownerId: "u1", name: "A", species: "goldfish", variant: 0xffffff, hunger: 80, status: "alive", bornAt: 0, exhaustedFor: 0, lastFedAt: 0, activeAt: 0, warned: false, likeCarry: 0, likeWindowStart: 0, likeWindowGrowth: 0 };
+    old.fish.push({ ...base, id: "f1", stage: 7, growth: 0 }, { ...base, id: "f2", ownerId: "u2", stage: 4, growth: 60 });
+    old.owners.push({ id: "u2", name: "B", bestStage: 4, raised: 1, retryAt: 0 });
+    const tank = mk();
+    tank.restore(old as never);
+    expect(tank.fish.get("f1")!.stage).toBe(MAX_STAGE);
+    const f2 = tank.fish.get("f2")!;
+    expect(f2.stage).toBe(LEGACY_STAGE_MAP[4]);
+    expect(f2.growth).toBe(Math.round(0.5 * STAGES[f2.stage].growthNeed));
+    // Lưu lại rồi khôi phục: không đổi lần hai.
+    const again = mk();
+    again.restore(JSON.parse(JSON.stringify(tank.serialize())));
+    expect(again.fish.get("f2")!.stage).toBe(LEGACY_STAGE_MAP[4]);
+  });
+});
+
 describe("lưu trữ", () => {
   it("khôi phục cá và chủ cá", () => {
     const tank = mk();
@@ -388,7 +417,7 @@ describe("kẻ săn mồi", () => {
     const small = hatched(tank, 1);
     small.growth = 50;
     const big = hatched(tank, 2);
-    big.stage = 6;
+    big.stage = SMALL_STAGE + 1;
     big.growth = 50;
     tank.tick(0);
     tank.startPredator(0);
@@ -460,7 +489,7 @@ describe("quà tặng", () => {
     tank.handle(gift(5, "Sunglasses"), 0);
     const hatched = tank.fishOf("u5")!;
     expect(SPECIES[hatched.species].tier).toBe("rare");
-    expect(hatched.stage).toBe(2);
+    expect(hatched.stage).toBe(GIFT_HATCH_STAGE);
     // Đã có cá thường cấp 5: hóa cá hiếm, giữ cấp.
     tank.hatchNow(user(6), 0, "goldfish")!.stage = 5;
     tank.handle(gift(6, "Sunglasses"), 0);
@@ -482,7 +511,7 @@ describe("quà tặng", () => {
     expect(SPECIES[tank.fishOf("u3")!.species].tier).toBe("common");
     tank.handle(gift(4, "Galaxy"), 0);
     expect(tank.fishOf("u4")?.species).toBe("dragonfish");
-    expect(tank.fishOf("u4")?.stage).toBe(2);
+    expect(tank.fishOf("u4")?.stage).toBe(GIFT_HATCH_STAGE);
     // Đã có cá thường: hóa rồng, giữ cấp.
     tank.fishOf("u3")!.stage = 4;
     tank.handle(gift(3, "Galaxy"), 0);
@@ -541,8 +570,8 @@ describe("răng nanh và khiên", () => {
     const tank = mk();
     const big = hatched(tank, 1);
     const small = hatched(tank, 2);
-    big.stage = 5;
-    small.stage = 2;
+    small.stage = 3;
+    big.stage = small.stage + DEFAULT_RULES.biteStageGap;
     big.bornAt = small.bornAt = -10 * MIN;
     tank.handle(gift(1, "Confetti"), 0);
     return { tank, big, small };

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { EngineClient, useEngine } from "@/client/engine-client";
 import { CANVAS_H, CANVAS_W } from "@/client/stage-size";
-import { COMMON_SPECIES, DEFAULT_RULES, RARE_SPECIES, REWARDS, SPECIES, STAGES, WEATHER_INFO, type GiftMapping, type RewardKey, type Rules } from "@/shared/config";
+import { COMMON_SPECIES, DEFAULT_RULES, MAX_STAGE, RARE_SPECIES, REWARDS, SPECIES, STAGES, WEATHER_INFO, stageLabel, type GiftMapping, type RewardKey, type Rules } from "@/shared/config";
 import type { AdminState } from "@/shared/protocol";
 import { StageFrame } from "../stage/stage-view";
 
@@ -316,7 +316,7 @@ export function AdminApp() {
             </button>
           ))}
           <button onClick={() => run("spawn", { species: "dragonfish" })}>Nở cá rồng</button>
-          <button onClick={() => run("spawn", { species: "dragonfish", stage: 7 })}>Cá rồng chúa</button>
+          <button onClick={() => run("spawn", { species: "dragonfish", stage: MAX_STAGE })}>Cá rồng chúa</button>
         </div>
         <div className="row">
           <button onClick={() => run("starveAll", { to: 12 })}>Cả bể đói còn 12%</button>
@@ -366,7 +366,7 @@ export function AdminApp() {
                 <td>{f.name}</td>
                 <td>{SPECIES[f.species].name}</td>
                 <td>
-                  {STAGES[f.stage].name} {f.growth}%
+                  {stageLabel(f.stage)} · {f.growth}%
                 </td>
                 <td>🍤 {f.hunger}%</td>
                 <td className="actions">

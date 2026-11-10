@@ -1,6 +1,7 @@
 "use client";
 
 import * as Phaser from "phaser";
+import { SMALL_STAGE } from "@/shared/config";
 import type { ChallengeView, EnvView, Fx } from "@/shared/protocol";
 import { CANVAS_H, CANVAS_W, SAND_Y, SURFACE_Y } from "./stage-size";
 
@@ -300,7 +301,7 @@ export class EnvLayer {
   fleeTarget(stage: number): { x?: number; y?: number } | null {
     if (this.challenge?.kind === "predator" && this.paw) {
       const away = this.pawX < CANVAS_W / 2 ? rand(CANVAS_W * 0.6, CANVAS_W - 80) : rand(80, CANVAS_W * 0.4);
-      return { x: away, y: stage <= 3 ? rand(1250, 1480) : undefined };
+      return { x: away, y: stage <= SMALL_STAGE ? rand(1250, 1480) : undefined };
     }
     if (this.env?.weather === "storm") return { y: rand(1150, 1480) };
     return null;
@@ -459,7 +460,7 @@ export class EnvLayer {
   private stepPaw(sec: number) {
     const paw = this.paw;
     if (!paw || this.pawLeaving) return;
-    const small = this.fishAt().filter((f) => f.stage <= 3);
+    const small = this.fishAt().filter((f) => f.stage <= SMALL_STAGE);
     const target = small.length ? small.reduce((a, f) => a + f.x, 0) / small.length : CANVAS_W / 2;
     this.pawX = lerp(this.pawX, Phaser.Math.Clamp(target, 140, CANVAS_W - 140), sec * 0.6);
     paw.x = this.pawX + Math.sin(this.scene.time.now / 380) * 40;

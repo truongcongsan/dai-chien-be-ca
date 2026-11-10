@@ -132,7 +132,7 @@ export const DEFAULT_RULES: Rules = {
 
   giftFallback: 1,
   attackEnabled: 1,
-  biteStageGap: 2,
+  biteStageGap: 4,
   newbieImmuneMs: 300_000,
   biteCooldownMs: 600_000,
   biteGrowth: 30,
@@ -241,18 +241,49 @@ export const WEATHER_INFO: Record<WeatherKind, { icon: string; name: string }> =
   storm: { icon: "⛈️", name: "Bão" },
 };
 
-/** Cấp 0 là trứng (đang nạp tim, chưa vào bể); cá trong bể từ cấp 1 đến MAX_STAGE. size = chiều dài cá trên Stage 1080px. */
+/** Giai đoạn hình ảnh: mỗi cấp dùng ảnh của giai đoạn nào (mỗi loài có 1 ảnh cho mỗi giai đoạn). */
+export type ArtPhase = "egg" | "fry" | "juvenile" | "teen" | "adult" | "king";
+
+/**
+ * Cấp 0 là trứng (đang nạp tim, chưa vào bể); cá trong bể từ cấp 1 đến MAX_STAGE (15).
+ * size = chiều dài cá trên Stage 1080px; growthNeed = điểm để lên cấp kế (3 tim = 1 điểm);
+ * announce = lên tới cấp này thì thông báo to + nhạc fanfare.
+ */
 export const STAGES = [
-  { name: "Trứng", size: 40, growthNeed: 0 },
-  { name: "Cá bột", size: 60, growthNeed: 100 },
-  { name: "Cá con", size: 78, growthNeed: 100 },
-  { name: "Cá nhỡ", size: 98, growthNeed: 110 },
-  { name: "Thiếu niên", size: 122, growthNeed: 120 },
-  { name: "Trưởng thành", size: 150, growthNeed: 130 },
-  { name: "Cá lớn", size: 182, growthNeed: 150 },
-  { name: "Cá chúa", size: 224, growthNeed: 0 },
-] as const;
+  { name: "Trứng", size: 40, growthNeed: 0, art: "egg", announce: false },
+  { name: "Cá bột", size: 58, growthNeed: 100, art: "fry", announce: false },
+  { name: "Cá bột lớn", size: 66, growthNeed: 100, art: "fry", announce: false },
+  { name: "Cá con", size: 76, growthNeed: 110, art: "juvenile", announce: false },
+  { name: "Cá con lanh lợi", size: 86, growthNeed: 110, art: "juvenile", announce: false },
+  { name: "Cá nhỡ", size: 97, growthNeed: 120, art: "juvenile", announce: true },
+  { name: "Cá nhỡ khỏe", size: 108, growthNeed: 120, art: "juvenile", announce: false },
+  { name: "Thiếu niên", size: 120, growthNeed: 130, art: "teen", announce: true },
+  { name: "Thiếu niên dũng mãnh", size: 132, growthNeed: 140, art: "teen", announce: false },
+  { name: "Thiếu niên tinh anh", size: 145, growthNeed: 150, art: "teen", announce: false },
+  { name: "Trưởng thành", size: 158, growthNeed: 160, art: "teen", announce: true },
+  { name: "Cá lớn", size: 172, growthNeed: 170, art: "adult", announce: true },
+  { name: "Cá khổng lồ", size: 186, growthNeed: 180, art: "adult", announce: true },
+  { name: "Cá thần", size: 200, growthNeed: 200, art: "adult", announce: true },
+  { name: "Cá huyền thoại", size: 214, growthNeed: 220, art: "adult", announce: true },
+  { name: "Cá chúa", size: 232, growthNeed: 0, art: "king", announce: true },
+] as const satisfies readonly { name: string; size: number; growthNeed: number; art: ArtPhase; announce: boolean }[];
 export const MAX_STAGE = STAGES.length - 1;
+
+/** Cá "nhỏ" (tới hết giai đoạn cá con): mèo khều được, bơi sát đáy khi có nguy hiểm. */
+export const SMALL_STAGE = 6;
+/** Cá ở cấp này trở lên luôn hiện tên kể cả khi bể đông. */
+export const NAME_STAGE = 8;
+/** Trứng hiếm/trứng rồng nở thẳng lên cấp này (đủ lớn để thấy ngay dáng loài). */
+export const GIFT_HATCH_STAGE = 3;
+
+/** "Lv7 · Thiếu niên" */
+export const stageLabel = (stage: number) => (stage <= 0 ? STAGES[0].name : `Lv${stage} · ${STAGES[stage]?.name ?? ""}`);
+
+/**
+ * Đổi cấp của bản lưu cũ (7 cấp) sang 15 cấp, giữ đúng giai đoạn hình ảnh:
+ * bột→1, con→3, nhỡ→5, thiếu niên→7, trưởng thành→10, cá lớn→12, cá chúa→15.
+ */
+export const LEGACY_STAGE_MAP = [0, 1, 3, 5, 7, 10, 12, 15] as const;
 
 export type Tier = "common" | "rare" | "epic" | "legendary";
 export type SpeciesId = "goldfish" | "guppy" | "puffer" | "neon" | "betta" | "angelfish" | "seahorse" | "dragonfish";
@@ -261,7 +292,7 @@ export interface Species {
   id: SpeciesId;
   name: string;
   tier: Tier;
-  /** Ảnh theo cấp 1..7 (chỉ số 0 = trứng). */
+  /** Ảnh theo cấp 0..MAX_STAGE (chỉ số 0 = trứng), dựng từ ảnh từng giai đoạn bằng artLadder(). */
   textures: string[];
   /** Màu nhuộm cá bột dùng chung. */
   fryTint: number;
@@ -271,12 +302,18 @@ export interface Species {
   labelTop: number;
 }
 
+/** Ảnh cho từng cấp 0..MAX_STAGE từ ảnh các giai đoạn của loài (<id>-juvenile/-teen/-adult, cá chúa riêng nếu có). */
+function artLadder(egg: string, id: string, king = `${id}-adult`): string[] {
+  const byPhase: Record<ArtPhase, string> = { egg, fry: "fish-fry-base", juvenile: `${id}-juvenile`, teen: `${id}-teen`, adult: `${id}-adult`, king };
+  return STAGES.map((s) => byPhase[s.art]);
+}
+
 export const SPECIES: Record<SpeciesId, Species> = {
   goldfish: {
     id: "goldfish",
     name: "Cá vàng tròn",
     tier: "common",
-    textures: ["fish-egg-common", "fish-fry-base", "goldfish-juvenile", "goldfish-juvenile", "goldfish-teen", "goldfish-teen", "goldfish-adult", "goldfish-adult"],
+    textures: artLadder("fish-egg-common", "goldfish"),
     fryTint: 0xffc89a,
     variants: [0xffffff, 0xffe2ee, 0xfff1b8, 0xffd9c4, 0xf2ecff],
     labelTop: 0.46,
@@ -285,7 +322,7 @@ export const SPECIES: Record<SpeciesId, Species> = {
     id: "guppy",
     name: "Cá bảy màu",
     tier: "common",
-    textures: ["fish-egg-common", "fish-fry-base", "guppy-juvenile", "guppy-juvenile", "guppy-teen", "guppy-teen", "guppy-adult", "guppy-adult"],
+    textures: artLadder("fish-egg-common", "guppy"),
     fryTint: 0xd4e8ff,
     variants: [0xffffff, 0xffd6ec, 0xd6f0ff, 0xfff0c4],
     labelTop: 0.27,
@@ -294,7 +331,7 @@ export const SPECIES: Record<SpeciesId, Species> = {
     id: "puffer",
     name: "Cá nóc tròn",
     tier: "common",
-    textures: ["fish-egg-common", "fish-fry-base", "puffer-juvenile", "puffer-juvenile", "puffer-teen", "puffer-teen", "puffer-adult", "puffer-adult"],
+    textures: artLadder("fish-egg-common", "puffer"),
     fryTint: 0xfff0a8,
     variants: [0xffffff, 0xfff2dc, 0xe8ffdc],
     labelTop: 0.43,
@@ -303,7 +340,7 @@ export const SPECIES: Record<SpeciesId, Species> = {
     id: "neon",
     name: "Cá neon",
     tier: "common",
-    textures: ["fish-egg-common", "fish-fry-base", "neon-juvenile", "neon-juvenile", "neon-teen", "neon-teen", "neon-adult", "neon-adult"],
+    textures: artLadder("fish-egg-common", "neon"),
     fryTint: 0xdcecff,
     variants: [0xffffff, 0xeef6ff],
     labelTop: 0.22,
@@ -312,7 +349,7 @@ export const SPECIES: Record<SpeciesId, Species> = {
     id: "betta",
     name: "Cá betta đuôi lụa",
     tier: "rare",
-    textures: ["fish-egg-rare", "fish-fry-base", "betta-juvenile", "betta-juvenile", "betta-teen", "betta-teen", "betta-adult", "betta-adult"],
+    textures: artLadder("fish-egg-rare", "betta"),
     fryTint: 0xffc2cf,
     variants: [0xffffff, 0xd8e4ff, 0xffe6b8],
     labelTop: 0.42,
@@ -321,7 +358,7 @@ export const SPECIES: Record<SpeciesId, Species> = {
     id: "angelfish",
     name: "Cá thần tiên",
     tier: "rare",
-    textures: ["fish-egg-rare", "fish-fry-base", "angelfish-juvenile", "angelfish-juvenile", "angelfish-teen", "angelfish-teen", "angelfish-adult", "angelfish-adult"],
+    textures: artLadder("fish-egg-rare", "angelfish"),
     fryTint: 0xe6ecf4,
     variants: [0xffffff, 0xfff0d0, 0xe0ecff],
     labelTop: 0.48,
@@ -330,7 +367,7 @@ export const SPECIES: Record<SpeciesId, Species> = {
     id: "seahorse",
     name: "Cá ngựa",
     tier: "rare",
-    textures: ["fish-egg-rare", "fish-fry-base", "seahorse-juvenile", "seahorse-juvenile", "seahorse-teen", "seahorse-teen", "seahorse-adult", "seahorse-adult"],
+    textures: artLadder("fish-egg-rare", "seahorse"),
     fryTint: 0xffd0a8,
     variants: [0xffffff, 0xffe0f0, 0xfff4c0],
     labelTop: 0.48,
@@ -339,7 +376,7 @@ export const SPECIES: Record<SpeciesId, Species> = {
     id: "dragonfish",
     name: "Cá rồng ánh kim",
     tier: "legendary",
-    textures: ["fish-egg-legendary", "fish-fry-base", "dragonfish-juvenile", "dragonfish-juvenile", "dragonfish-teen", "dragonfish-teen", "dragonfish-adult", "dragonfish-king"],
+    textures: artLadder("fish-egg-legendary", "dragonfish", "dragonfish-king"),
     fryTint: 0xfbe39a,
     variants: [0xffffff],
     labelTop: 0.4,

@@ -2,10 +2,14 @@ import {
   DEFAULT_AUDIO,
   DEFAULT_GIFTS,
   DEFAULT_RULES,
+  GIFT_HATCH_STAGE,
+  LEGACY_STAGE_MAP,
   MAX_STAGE,
+  SMALL_STAGE,
   REWARDS,
   SPECIES,
   STAGES,
+  stageLabel,
   matchGift,
   normalize,
   parseBite,
@@ -87,6 +91,8 @@ interface Saved {
   totals: Snapshot["totals"];
   nextId: number;
   dirt?: number;
+  /** Số cấp tối đa khi lưu; thiếu = bản cũ 7 cấp, được đổi sang thang hiện tại lúc khôi phục. */
+  maxStage?: number;
 }
 
 const BITE_AUTO_RETRY = 30_000;
@@ -373,8 +379,8 @@ export class Tank {
       const o = this.owners.get(fish.ownerId);
       if (o) o.bestStage = Math.max(o.bestStage, fish.stage);
       this.fx.push({ kind: "levelup", fishId: fish.id, stage: fish.stage, name: fish.name });
-      if (fish.stage >= 5) this.fx.push({ kind: "announce", text: `🎉 Cá của ${fish.name} lớn thành ${STAGES[fish.stage].name}!`, tone: "gold" });
-      this.addLog("game", `${fish.name} lên ${STAGES[fish.stage].name}`);
+      if (STAGES[fish.stage].announce) this.fx.push({ kind: "announce", text: `🎉 Cá của ${fish.name} lớn thành ${stageLabel(fish.stage)}!`, tone: "gold" });
+      this.addLog("game", `${fish.name} lên ${stageLabel(fish.stage)}`);
     }
     if (fish.stage >= MAX_STAGE) fish.growth = 0;
   }
@@ -647,7 +653,7 @@ export class Tank {
   private predatorLose(now: number) {
     this.challenge = null;
     this.dirty = true;
-    const small = [...this.fish.values()].filter((f) => f.stage <= 3 && f.growth > 0).sort(() => Math.random() - 0.5);
+    const small = [...this.fish.values()].filter((f) => f.stage <= SMALL_STAGE && f.growth > 0).sort(() => Math.random() - 0.5);
     const victims = small.slice(0, this.rules.predatorVictims);
     for (const f of victims) f.growth = Math.max(0, f.growth - STAGES[f.stage].growthNeed * 0.3);
     this.fx.push({ kind: "predatorLose", victims: victims.map((f) => f.id) });
@@ -702,7 +708,7 @@ export class Tank {
         thanks("cá hóa rồng ánh kim! 🐉");
       } else {
         fish = this.hatchNow(user, now, "dragonfish");
-        if (fish) fish.stage = Math.max(fish.stage, 2);
+        if (fish) fish.stage = Math.max(fish.stage, GIFT_HATCH_STAGE);
         thanks("nở cá rồng ánh kim! 🐉");
       }
       return fish;
@@ -720,7 +726,7 @@ export class Tank {
           thanks(`cá hóa ${spec.name.toLowerCase()}! 💎`);
         } else {
           fish = this.hatchNow(user, now, species);
-          if (fish) fish.stage = Math.max(fish.stage, 2);
+          if (fish) fish.stage = Math.max(fish.stage, GIFT_HATCH_STAGE);
           thanks(`nở ${spec.name.toLowerCase()}! 💎`);
         }
         if (fish && n > 1) this.applyToFish(fish, "food", n - 1, now);
@@ -1069,7 +1075,23 @@ export class Tank {
   // ---------- lưu trữ ----------
 
   serialize(): Saved {
-    return { fish: [...this.fish.values()], owners: [...this.owners.values()], totals: this.totals, nextId: this.nextId, dirt: this.dirt };
+    return { fish: [...this.fish.values()], owners: [...this.owners.values()], totals: this.totals, nextId: this.nextId, dirt: this.dirt, maxStage: MAX_STAGE };
+  }
+
+  /** Bản lưu 7 cấp → 15 cấp: giữ đúng giai đoạn hình ảnh, giữ % tiến độ trong cấp. */
+  private upgradeLegacyStages() {
+    const legacyNeed = [0, 100, 100, 110, 120, 130, 150, 0];
+    const up = (f: Fish) => {
+      const old = Math.max(0, Math.min(7, f.stage));
+      const pct = legacyNeed[old] ? f.growth / legacyNeed[old] : 0;
+      f.stage = LEGACY_STAGE_MAP[old];
+      f.growth = Math.round(pct * STAGES[f.stage].growthNeed);
+    };
+    for (const f of this.fish.values()) up(f);
+    for (const o of this.owners.values()) {
+      o.bestStage = LEGACY_STAGE_MAP[Math.max(0, Math.min(7, o.bestStage))];
+      if (o.lastDead) up(o.lastDead.fish);
+    }
   }
 
   restore(data: Partial<Saved>) {
@@ -1079,6 +1101,7 @@ export class Tank {
     for (const o of data.owners ?? []) this.owners.set(o.id, o);
     if (data.totals) this.totals = { ...this.totals, ...data.totals };
     for (const f of this.fish.values()) f.immortalUntil = f.immortalUntil ?? 0;
+    if ((data.maxStage ?? 7) === 7 && MAX_STAGE !== 7) this.upgradeLegacyStages();
     this.nextId = Math.max(this.nextId, data.nextId ?? 1);
     this.dirt = data.dirt ?? 0;
     this.dirty = true;

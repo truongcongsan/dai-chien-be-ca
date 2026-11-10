@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
-import { DEFAULT_AUDIO, DEFAULT_GIFTS, DEFAULT_RULES, REWARDS, SPECIES, WEATHER_INFO, normalize, randomCommonSpecies, type AudioSettings, type GiftMapping, type Rules, type SpeciesId, type WeatherKind } from "../src/shared/config";
+import { DEFAULT_AUDIO, DEFAULT_GIFTS, DEFAULT_RULES, MAX_STAGE, REWARDS, SPECIES, WEATHER_INFO, normalize, randomCommonSpecies, type AudioSettings, type GiftMapping, type Rules, type SpeciesId, type WeatherKind } from "../src/shared/config";
 import type { AdminState, ClientCommand, ConnectorStatus, Fx, ServerMessage, VoiceStatus } from "../src/shared/protocol";
 import { DemoAdapter } from "./adapters/demo";
 import type { SourceAdapter } from "./adapters/source";
@@ -168,7 +168,7 @@ function runCommand(cmd: string, args: Record<string, unknown> = {}): { ok: bool
       const user = pool.find((u) => !tank.fishOf(u.userId) && !tank.eggs.has(u.userId)) ?? { userId: `admin-${now}`, uniqueId: `admin${now}`, name: "Khách Admin" };
       const fish = tank.hatchNow(user, now, species);
       const stage = Number(args.stage) || 0;
-      if (fish && stage > 1) fish.stage = Math.min(7, stage);
+      if (fish && stage > 1) fish.stage = Math.min(MAX_STAGE, stage);
       return { ok: Boolean(fish) };
     }
     case "feedFish": {

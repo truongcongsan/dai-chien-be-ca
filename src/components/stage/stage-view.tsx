@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { StageAudio, type SfxName } from "@/client/audio";
 import { EngineClient, engineBase, useEngine } from "@/client/engine-client";
 import { CANVAS_H, CANVAS_W } from "@/client/stage-size";
-import { REWARDS, SPECIES, STAGES, WEATHER_INFO } from "@/shared/config";
+import { REWARDS, SPECIES, STAGES, WEATHER_INFO, stageLabel } from "@/shared/config";
 import type { ChallengeView, Fx, Snapshot } from "@/shared/protocol";
 
 /** `/?view=stage`: trang sạch cho OBS. Khung 1080×1920 được scale nguyên khối, không méo. */
@@ -33,7 +33,7 @@ function sfxFor(fx: Fx): SfxName | null {
     case "dropEaten":
       return "plop";
     case "levelup":
-      return fx.stage >= 5 ? "fanfare" : "levelup";
+      return STAGES[fx.stage]?.announce ? "fanfare" : "levelup";
     case "death":
       return "death";
     case "crown":
@@ -260,7 +260,7 @@ function StageHud({ client, snap }: { client: EngineClient; snap: Snapshot }) {
             <li key={`${t.name}-${i}`} className={SPECIES[t.species].tier !== "common" ? "is-rare" : ""}>
               <span>{t.crowned ? "👑" : MEDALS[i]}</span>
               <b>{t.name}</b>
-              <em>{STAGES[t.stage].name}</em>
+              <em>{stageLabel(t.stage)}</em>
             </li>
           ))}
         </ol>
