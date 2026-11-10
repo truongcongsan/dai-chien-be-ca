@@ -6,11 +6,17 @@ const MAX_RETRY_MS = 120_000;
 /* Field names differ between connector versions, so both layouts are accepted. */
 interface Payload {
   comment?: string;
+  /** Bản connector 2.x gửi nội dung comment ở `content`. */
+  content?: string;
   msgId?: string;
   userId?: string;
   uniqueId?: string;
   nickname?: string;
-  user?: { userId?: string; uniqueId?: string; nickname?: string };
+  /** 2.x: user.id (số), user.displayId (tên @), user.nickname. */
+  user?: { userId?: string; uniqueId?: string; nickname?: string; id?: string | number; displayId?: string };
+  /** 2.x: số tim của lô (LIKE) và số người xem (ROOM_USER, dạng chuỗi). */
+  count?: number | string;
+  total?: number | string;
   common?: { msgId?: string };
   giftId?: number | string;
   giftName?: string;
@@ -32,12 +38,26 @@ interface Connection {
   on(event: string, listener: (payload: never) => void): unknown;
 }
 
-function userOf(data: Payload): SourceUser | null {
-  const userId = data.user?.userId ?? data.userId ?? data.user?.uniqueId ?? data.uniqueId;
-  if (!userId) return null;
-  const uniqueId = data.user?.uniqueId ?? data.uniqueId ?? String(userId);
-  return { userId: String(userId), uniqueId, name: data.user?.nickname ?? data.nickname ?? uniqueId };
+export function userOf(data: Payload): SourceUser | null {
+  const u = data.user;
+  const rawId = u?.userId ?? u?.id ?? (data.userId && data.userId !== "0" ? data.userId : undefined) ?? u?.uniqueId ?? u?.displayId ?? data.uniqueId;
+  if (rawId === undefined || rawId === null || rawId === "" || String(rawId) === "0") return null;
+  const userId = String(rawId);
+  const uniqueId = u?.uniqueId ?? u?.displayId ?? data.uniqueId ?? userId;
+  return { userId, uniqueId, name: u?.nickname || data.nickname || uniqueId };
 }
+
+/** Nội dung comment (1.x: comment, 2.x: content). */
+export const commentOf = (data: Payload) => (typeof data.comment === "string" ? data.comment : typeof data.content === "string" ? data.content : null);
+
+/** Số tim trong một lô (1.x: likeCount, 2.x: count). */
+export const likesOf = (data: Payload) => Number(data.likeCount ?? data.count) || 1;
+
+/** Số người xem (1.x: viewerCount, 2.x: total dạng chuỗi). */
+export const viewersOf = (data: Payload) => {
+  const n = Number(data.viewerCount ?? data.total);
+  return Number.isFinite(n) ? n : null;
+};
 
 const msgId = (data: Payload) => data.common?.msgId ?? data.msgId;
 
@@ -124,7 +144,9 @@ export class TikTokAdapter implements SourceAdapter {
       const connection = new TikTokLiveConnection(this.username, {
         // Initial data replays recent chat, and old commands must not fire again after a reconnect.
         processInitialData: false,
-        enableExtendedGiftInfo: true,
+        // Tải danh sách quà của phòng cần gói Euler Business; không có thì cả kết nối thất bại.
+        // Sự kiện quà vẫn mang sẵn tên + giá (giftDetails), nên mặc định tắt. TIKTOK_EXTENDED_GIFTS=1 để bật.
+        enableExtendedGiftInfo: process.env.TIKTOK_EXTENDED_GIFTS === "1",
         signApiKey: process.env.TIKTOK_SIGN_API_KEY || undefined,
       }) as unknown as Connection;
       this.connection = connection;
@@ -132,13 +154,14 @@ export class TikTokAdapter implements SourceAdapter {
       on(WebcastEvent.CHAT, (data) => {
         const user = userOf(data);
         const id = msgId(data);
-        if (user && id && typeof data.comment === "string") emit({ type: "chat", eventId: `tt:${id}`, user, text: data.comment });
+        const text = commentOf(data);
+        if (user && id && text !== null) emit({ type: "chat", eventId: `tt:${id}`, user, text });
       });
       on(WebcastEvent.GIFT, (data) => emit(toGiftEvent(data)));
       on(WebcastEvent.LIKE, (data) => {
         const user = userOf(data);
         const id = msgId(data);
-        if (user && id) emit({ type: "like", eventId: `tt:${id}`, user, count: Number(data.likeCount) || 1 });
+        if (user && id) emit({ type: "like", eventId: `tt:${id}`, user, count: likesOf(data) });
       });
       for (const [name, type] of [
         [WebcastEvent.FOLLOW, "follow"],
@@ -152,7 +175,8 @@ export class TikTokAdapter implements SourceAdapter {
         });
       }
       on(WebcastEvent.ROOM_USER, (data) => {
-        if (typeof data.viewerCount === "number") emit({ type: "viewers", count: data.viewerCount });
+        const count = viewersOf(data);
+        if (count !== null) emit({ type: "viewers", count });
       });
       on(ControlEvent.DISCONNECTED, () => {
         if (!current()) return;

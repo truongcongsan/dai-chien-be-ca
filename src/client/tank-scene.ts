@@ -150,8 +150,13 @@ class TankScene extends Phaser.Scene {
     this.envLayer.create();
     this.waiting = this.text(CANVAS_W / 2, 600, "", 26, "#ffffff").setDepth(950);
 
-    this.offFx = this.client.onFx((fx) => this.onFx(fx));
+    this.offFx = this.client.onFx((fx) => {
+      // Scene đã bị hủy (đóng tab Admin, HMR, game.destroy) mà socket còn gửi hiệu ứng: bỏ qua.
+      if (!this.sys?.isActive()) return;
+      this.onFx(fx);
+    });
     this.events.once("shutdown", () => this.offFx?.());
+    this.events.once("destroy", () => this.offFx?.());
   }
 
   // ---------- textures vẽ bằng canvas ----------

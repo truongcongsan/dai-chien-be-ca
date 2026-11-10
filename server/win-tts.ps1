@@ -1,4 +1,4 @@
-# Giọng đọc có sẵn của Windows (WinRT, gồm cả giọng OneCore như "Microsoft An" tiếng Việt).
+﻿# Giọng đọc có sẵn của Windows (WinRT, gồm cả giọng OneCore như "Microsoft An" tiếng Việt).
 # Liệt kê:  powershell -File win-tts.ps1 -List            → mỗi dòng một tên giọng vi-VN
 # Đọc:      powershell -File win-tts.ps1 -Voice "Microsoft An" -TextFile in.txt -Out out.wav
 param(

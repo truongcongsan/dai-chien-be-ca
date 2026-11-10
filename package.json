@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n engine,web -c yellow,cyan \"tsx watch server/main.ts\" \"next dev -H 127.0.0.1 -p 3320\"",
+    "start:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-windows.ps1",
     "build": "next build",
     "start": "concurrently -k -n engine,web -c yellow,cyan \"tsx server/main.ts\" \"next start -H 127.0.0.1 -p 3320\"",
     "typecheck": "tsc --noEmit",

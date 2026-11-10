@@ -14,6 +14,15 @@ pnpm dev
 - Dữ liệu cá lưu ở `data/tank.json` (10 giây/lần và khi tắt). Tắt kết nối LIVE thì bể đóng băng.
 - `pnpm test` — test luật chơi; `pnpm typecheck`.
 
+### Windows (khi live thật)
+
+Bấm đúp **`start-windows.cmd`** (hoặc `corepack pnpm start:win`). Engine và web mở ở hai cửa sổ PowerShell riêng ("Bể Cá engine", "Bể Cá web"); tắt bằng cách đóng hai cửa sổ đó.
+
+- Không dùng `pnpm dev` khi live trên Windows: `concurrently` gom log của engine qua pipe, pipe nghẽn thì engine đứng im và mất kết nối TikTok.
+- Máy chưa cài `pnpm` thì gõ `corepack pnpm …` thay cho `pnpm …`.
+- TikTok LIVE Studio không nhận link localhost: dùng `http://beca-7f000001.nip.io:3320/?view=stage` (DNS công khai trỏ về 127.0.0.1, cần internet).
+- Kết nối TikTok cần key Eulerstream trong `.env`: `TIKTOK_SIGN_API_KEY=...` (file `.env` không commit). Gói thường đủ để kết nối; tải danh sách quà của phòng cần gói Business nên mặc định tắt (`TIKTOK_EXTENDED_GIFTS=1` để bật).
+
 ## Đã có (MVP lõi)
 Comment `cá` / thả tim → trứng có thanh %, đủ 60 tim thì nở; `ăn` cho ăn (cooldown 20s); đói −5%/phút, kiệt sức 30s rồi chết; 8 cấp lớn; vương miện + Top 3; hàng chờ giữ tim; cá bơi uốn thân, rong, bong bóng, tia nắng; thông báo nở/lên cấp/đói/chết.
 
