@@ -289,7 +289,7 @@ function StageHud({ client, snap }: { client: EngineClient; snap: Snapshot }) {
           Comment <b>“cá”</b> rồi thả tim ❤️ để nở trứng
         </span>
         <span>
-          <b>“ăn”</b> để cho cá ăn 🍤
+          Thả tim ❤️ để cá <b>lớn</b> và no
         </span>
       </footer>
     </>

@@ -46,7 +46,7 @@ describe("MC", () => {
     const { n, said } = mc();
     n.consume([ann('😵 Cá của Mai sắp đói lả, comment "ăn" đi!', "sad", "warn"), ann('😵 Cá của Lan sắp đói lả, comment "ăn" đi!', "sad", "warn")], 0);
     n.tick(5000);
-    expect(said[0].text).toBe("Cá của Mai và Lan đang đói lả, bình luận ăn ngay nhé!");
+    expect(said[0].text).toBe("Cá của Mai và Lan đang đói lả, thả tim cứu ngay nhé!");
     n.consume([ann("🫧 Cá của Tú đã về trời…", "sad", "death")], 10_000);
     n.tick(16_000);
     expect(said[1].text).toBe("Ôi, cá của Tú đã về trời mất rồi.");

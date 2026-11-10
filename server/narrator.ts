@@ -9,7 +9,8 @@ export const P = { event: 5, big: 4, warn: 3, info: 2, ambient: 1 } as const;
 /** Câu MC nhắc cách chơi lúc bể yên ắng (được tạo giọng sẵn). */
 export const AMBIENT = [
   "Bình luận cá rồi thả tim liên tục để nở trứng nhé!",
-  "Nhớ bình luận ăn để cho cá ăn, đừng để cá đói nha!",
+  "Thả tim thật nhiều để cá lớn nhanh và không bị đói nha!",
+  "Vài trăm tim là cá lên một cấp đó, thả tim liên tục nào!",
   "Cá to nhất bể sẽ được đội vương miện đó!",
   "Tặng quà để nhận khiên, thuốc lớn nhanh, hay trứng rồng ánh kim nha!",
   "Có răng nanh thì bình luận cắn, a còng, tên bạn để đớp cá nhỏ hơn!",
@@ -124,7 +125,7 @@ export class Narrator {
       const names = b.names.splice(0);
       this.say(speakable(line(list(names))), priority, true, now);
     };
-    flush("warn", 4000, (who) => `Cá của ${who} đang đói lả, bình luận ăn ngay nhé!`, P.warn);
+    flush("warn", 4000, (who) => `Cá của ${who} đang đói lả, thả tim cứu ngay nhé!`, P.warn);
     flush("hatch", 5000, (who) => `Chào mừng bé cá của ${who}!`, P.info);
     flush("death", 5000, (who) => `Ôi, cá của ${who} đã về trời mất rồi.`, P.info);
 

@@ -24,7 +24,7 @@ Bấm đúp **`start-windows.cmd`** (hoặc `corepack pnpm start:win`). Engine v
 - Kết nối TikTok cần key Eulerstream trong `.env`: `TIKTOK_SIGN_API_KEY=...` (file `.env` không commit). Gói thường đủ để kết nối; tải danh sách quà của phòng cần gói Business nên mặc định tắt (`TIKTOK_EXTENDED_GIFTS=1` để bật).
 
 ## Đã có (MVP lõi)
-Comment `cá` / thả tim → trứng có thanh %, đủ 60 tim thì nở; `ăn` cho ăn (cooldown 20s); đói −5%/phút, kiệt sức 30s rồi chết; 8 cấp lớn; vương miện + Top 3; hàng chờ giữ tim; cá bơi uốn thân, rong, bong bóng, tia nắng; thông báo nở/lên cấp/đói/chết.
+Comment `cá` / thả tim → trứng có thanh %, đủ 60 tim thì nở; **thả tim để cá lớn**: 3 tim = 1 điểm, một cấp 100–150 điểm (≈ 300–450 tim), 10 tim = +1% no; `ăn` vẫn cho ăn (+5% no, +5 điểm, cooldown 20s); đói −5%/phút, kiệt sức 30s rồi chết; 8 cấp lớn; vương miện + Top 3; hàng chờ giữ tim; cá bơi uốn thân, rong, bong bóng, tia nắng; thông báo nở/lên cấp/đói/chết.
 
 Cá đói "nói" bằng bong bóng chữ. Thời tiết tự đổi: mưa (comment `đớp` để cá ăn côn trùng), cầu vồng (×1,5 tăng trưởng), bão (đói ×2, sống sót nhận ⚡), đêm (đói ×0,5, sứa phát sáng). Thử thách cả phòng: nước bẩn (comment `dọn`), mèo thò tay (thả tim đuổi mèo).
 

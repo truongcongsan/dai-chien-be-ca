@@ -19,6 +19,15 @@ const host = process.env.ENGINE_HOST ?? "127.0.0.1";
 const port = Number(process.env.ENGINE_PORT ?? 3321);
 const savePath = join(dataDir, "tank.json");
 mkdirSync(dataDir, { recursive: true });
+/**
+ * Mỗi lần đổi mặc định của luật mà bản lưu cũ cần nhận lại: thêm một phiên bản kèm các khóa cần bỏ số cũ.
+ * Bản lưu ở phiên bản thấp hơn thì các khóa đó lấy mặc định mới (một lần); luật khác Admin đã chỉnh vẫn giữ.
+ */
+const RULE_MIGRATIONS: Record<number, (keyof Rules)[]> = {
+  2: ["likesPerGrowth", "likeGrowthCapPerMin"], // thả tim để lớn
+  3: ["predatorLikesPerFish", "predatorMinLikes", "cleanPerFish"], // mèo, dọn bể khó hơn
+};
+const RULES_VERSION = Math.max(...Object.keys(RULE_MIGRATIONS).map(Number));
 
 const tank = new Tank();
 let saved: { connector?: { kind: string; username: string }; rules?: Partial<Rules>; gifts?: GiftMapping[]; audio?: Partial<AudioSettings> } = {};
@@ -27,7 +36,12 @@ if (existsSync(savePath)) {
     const data = JSON.parse(readFileSync(savePath, "utf8"));
     tank.restore(data.tank ?? {});
     saved = data;
-    tank.rules = { ...DEFAULT_RULES, ...(data.rules ?? {}) };
+    const savedRules: Partial<Rules> = { ...(data.rules ?? {}) };
+    const from = Number(data.rulesVersion ?? 1);
+    for (const [version, keys] of Object.entries(RULE_MIGRATIONS)) {
+      if (from < Number(version)) for (const key of keys) delete savedRules[key];
+    }
+    tank.rules = { ...DEFAULT_RULES, ...savedRules };
     if (Array.isArray(data.gifts) && data.gifts.length) {
       tank.gifts = data.gifts.filter((g: GiftMapping) => g.reward in REWARDS);
       // Phần thưởng ra đời sau lần lưu (vd. Trứng hiếm): thêm quà mặc định của nó; phần thưởng cũ bị xóa tay thì không thêm lại.
@@ -42,7 +56,7 @@ if (existsSync(savePath)) {
 
 function persist() {
   const tmp = `${savePath}.tmp`;
-  writeFileSync(tmp, JSON.stringify({ tank: tank.serialize(), rules: tank.rules, gifts: tank.gifts, knownRewards: Object.keys(REWARDS), audio: tank.audio, connector: { kind: connector.kind, username: connector.username } }));
+  writeFileSync(tmp, JSON.stringify({ tank: tank.serialize(), rules: tank.rules, rulesVersion: RULES_VERSION, gifts: tank.gifts, knownRewards: Object.keys(REWARDS), audio: tank.audio, connector: { kind: connector.kind, username: connector.username } }));
   renameSync(tmp, savePath);
 }
 

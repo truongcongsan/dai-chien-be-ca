@@ -142,11 +142,34 @@ describe("đói, cho ăn, tăng trưởng", () => {
     expect(fish.stage).toBe(MAX_STAGE);
   });
 
-  it("thả tim khi có cá cộng tăng trưởng nhỏ, có trần mỗi phút", () => {
+  it("thả tim là cách chính để lớn: vài trăm tim lên một cấp", () => {
     const tank = mk();
     const fish = hatched(tank, 1);
-    tank.handle(like(1, 30 * 20), 1000);
-    expect(fish.growth).toBe(DEFAULT_RULES.likeGrowthCapPerMin);
+    const need = STAGES[fish.stage].growthNeed * DEFAULT_RULES.likesPerGrowth;
+    expect(need).toBeGreaterThanOrEqual(200);
+    expect(need).toBeLessThanOrEqual(500);
+    const stage = fish.stage;
+    tank.handle(like(1, need - DEFAULT_RULES.likesPerGrowth), 1000);
+    expect(fish.stage).toBe(stage);
+    tank.handle(like(1, DEFAULT_RULES.likesPerGrowth), 2000);
+    expect(fish.stage).toBe(stage + 1);
+  });
+
+  it("tim cũng làm cá no và cứu cá kiệt sức", () => {
+    const tank = mk();
+    const fish = hatched(tank, 1);
+    fish.hunger = 0;
+    fish.status = "exhausted";
+    tank.handle(like(1, DEFAULT_RULES.likesPerHunger * 20), 1000);
+    expect(fish.hunger).toBe(20);
+    expect(fish.status).toBe("alive");
+  });
+
+  it("trần tim mỗi phút vẫn dùng được khi Admin đặt", () => {
+    const tank = mk({ likeGrowthCapPerMin: 5 });
+    const fish = hatched(tank, 1);
+    tank.handle(like(1, 3 * 100), 1000);
+    expect(fish.growth).toBe(5);
   });
 });
 
@@ -326,13 +349,35 @@ describe("nước bẩn", () => {
   });
 });
 
+describe("độ khó thử thách", () => {
+  it("mèo cần nhiều tim theo số cá; dọn bể cần nhiều lượt nhưng có trần", () => {
+    const tank = mk({ maxFish: 500, maxCharging: 500 });
+    const needed = () => (tank.challenge as unknown as { needed: number }).needed;
+    for (let i = 1; i <= 40; i++) hatched(tank, i);
+    tank.startPredator(0);
+    expect(needed()).toBe(40 * DEFAULT_RULES.predatorLikesPerFish);
+    tank.challenge = null;
+    tank.startCleanup(0);
+    expect(needed()).toBe(40 * DEFAULT_RULES.cleanPerFish);
+    tank.challenge = null;
+    for (let i = 41; i <= 100; i++) hatched(tank, i);
+    tank.startCleanup(0);
+    expect(needed()).toBe(DEFAULT_RULES.cleanMaxNeeded);
+  });
+});
+
 describe("kẻ săn mồi", () => {
   it("thả tim đủ thì đuổi được mèo, người thả tim có cá được thưởng", () => {
     const tank = mk();
     const fish = hatched(tank, 1);
     tank.startPredator(0);
-    tank.handle(like(1, 100), 0);
-    tank.handle(like(77, 100), 0);
+    const needed = (tank.challenge as { needed: number }).needed;
+    expect(needed).toBe(DEFAULT_RULES.predatorMinLikes);
+    // Thiếu 1 tim thì mèo vẫn còn.
+    tank.handle(like(1, Math.floor(needed / 2)), 0);
+    tank.handle(like(77, Math.ceil(needed / 2) - 1), 0);
+    expect(tank.challenge?.kind).toBe("predator");
+    tank.handle(like(77, 1), 0);
     expect(tank.challenge).toBeNull();
     expect(tank.takeFx().some((f) => f.kind === "predatorWin")).toBe(true);
     expect(fish.growth).toBeGreaterThanOrEqual(DEFAULT_RULES.rewardGrowth);

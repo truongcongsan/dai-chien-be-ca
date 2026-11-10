@@ -29,7 +29,7 @@ const BUBBLE_STYLE: Record<BubbleMood, { fill: number; line: number; text: strin
 };
 const HUNGRY_LINES = ["Đói quá 🥺", "Cho tui ăn đi!", "Bụng réo rồi…", "Đói bụng nè 😢", "Ai cho ăn với!", "{name} ơi, đói!"];
 const CRITICAL_LINES = ["Đói lả rồi… 😵", "Cứu tui với!!", "Sắp xỉu rồi…", "{name} ơi, cứu!"];
-const EXHAUSTED_LINES = ['Comment "ăn" cứu tui… 😵', "Hết sức rồi…"];
+const EXHAUSTED_LINES = ["Thả tim cứu tui… 😵", "Hết sức rồi…"];
 const HAPPY_LINES = ["Ngon quá! 😋", "No rồi nè 🥰", "Cảm ơn nha!", "Măm măm 🍤"];
 const pick = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)];
 const EMOJI = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';

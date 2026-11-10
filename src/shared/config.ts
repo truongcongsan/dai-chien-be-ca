@@ -14,9 +14,15 @@ export interface Rules {
   feedHunger: number;
   feedGrowth: number;
   feedCooldownMs: number;
-  /** Khi đã có cá: mỗi chừng này like được +1% tăng trưởng, tối đa likeGrowthCapPerMin %/phút. */
+  /**
+   * Thả tim là cách chính để cá lớn: mỗi chừng này like = +1 điểm tăng trưởng (một cấp cần 100–150 điểm,
+   * nên 3 like/điểm ≈ 300–450 tim một cấp). Cầu vồng và Thuốc lớn nhân thêm như khi cho ăn.
+   */
   likesPerGrowth: number;
+  /** Trần điểm tăng trưởng từ like mỗi phút cho một con cá; 0 = không giới hạn. */
   likeGrowthCapPerMin: number;
+  /** Mỗi chừng này like = +1% no (cá được thả tim thì không đói); 0 = tắt, chỉ comment "ăn" mới no. */
+  likesPerHunger: number;
   /** Đói về 0 thì kiệt sức chừng này, cho ăn kịp thì sống. */
   exhaustedMs: number;
   warnHunger: number;
@@ -45,8 +51,10 @@ export interface Rules {
   /** Bẩn tới mức này thì nước đục (đói ×1,5) và mở thử thách dọn bể. */
   dirtyAt: number;
   cleanWindowMs: number;
-  /** Số lượt "dọn" cần = số cá × hệ số này (tối thiểu 15, tối đa 100). */
+  /** Số lượt "dọn" cần = số cá × hệ số này, kẹp trong [cleanMinNeeded, cleanMaxNeeded]. */
   cleanPerFish: number;
+  cleanMinNeeded: number;
+  cleanMaxNeeded: number;
   cleanMaxPerUser: number;
   rewardGrowth: number;
   predatorEveryMin: number;
@@ -89,8 +97,9 @@ export const DEFAULT_RULES: Rules = {
   feedHunger: 5,
   feedGrowth: 5,
   feedCooldownMs: 20_000,
-  likesPerGrowth: 30,
-  likeGrowthCapPerMin: 5,
+  likesPerGrowth: 3,
+  likeGrowthCapPerMin: 0,
+  likesPerHunger: 10,
   exhaustedMs: 30_000,
   warnHunger: 15,
   crownCooldownMs: 60_000,
@@ -110,13 +119,15 @@ export const DEFAULT_RULES: Rules = {
   dirtPerFishPerMin: 0.06,
   dirtyAt: 70,
   cleanWindowMs: 60_000,
-  cleanPerFish: 1.5,
+  cleanPerFish: 2.5,
+  cleanMinNeeded: 25,
+  cleanMaxNeeded: 150,
   cleanMaxPerUser: 5,
   rewardGrowth: 5,
   predatorEveryMin: 15,
   predatorWindowMs: 30_000,
-  predatorLikesPerFish: 12,
-  predatorMinLikes: 150,
+  predatorLikesPerFish: 30,
+  predatorMinLikes: 500,
   predatorVictims: 3,
 
   giftFallback: 1,

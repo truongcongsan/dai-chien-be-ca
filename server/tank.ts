@@ -41,6 +41,8 @@ export interface Fish {
   likeCarry: number;
   likeWindowStart: number;
   likeWindowGrowth: number;
+  /** Tim dư chưa đủ đổi thành +1% no (có thể thiếu ở dữ liệu cũ). */
+  likeHungerCarry?: number;
   // Quà tặng (có thể thiếu ở dữ liệu cũ)
   shieldUntil?: number;
   shieldCharges?: number;
@@ -252,14 +254,33 @@ export class Tank {
       fish.likeWindowStart = now;
       fish.likeWindowGrowth = 0;
     }
+    const r = this.rules;
+    // Tim cũng cho cá no: người chỉ thả tim không phải comment "ăn" mới giữ được cá.
+    if (r.likesPerHunger > 0) {
+      fish.likeHungerCarry = (fish.likeHungerCarry ?? 0) + count;
+      const fed = Math.floor(fish.likeHungerCarry / r.likesPerHunger);
+      fish.likeHungerCarry -= fed * r.likesPerHunger;
+      if (fed > 0) {
+        fish.hunger = Math.min(100, fish.hunger + fed);
+        if (fish.status === "exhausted") {
+          fish.status = "alive";
+          fish.exhaustedFor = 0;
+          this.fx.push({ kind: "announce", text: `💚 ${fish.name} thả tim cứu kịp bé cá!`, tone: "info" });
+        }
+        if (fish.hunger > r.warnHunger) fish.warned = false;
+        this.dirty = true;
+      }
+    }
+    if (r.likesPerGrowth <= 0) return;
     fish.likeCarry += count;
-    const units = Math.floor(fish.likeCarry / this.rules.likesPerGrowth);
-    fish.likeCarry -= units * this.rules.likesPerGrowth;
-    const room = this.rules.likeGrowthCapPerMin - fish.likeWindowGrowth;
+    const units = Math.floor(fish.likeCarry / r.likesPerGrowth);
+    fish.likeCarry -= units * r.likesPerGrowth;
+    const room = r.likeGrowthCapPerMin > 0 ? r.likeGrowthCapPerMin - fish.likeWindowGrowth : Number.POSITIVE_INFINITY;
     const add = Math.min(units, Math.max(0, room));
     if (add > 0) {
       fish.likeWindowGrowth += add;
-      this.grow(fish, add);
+      const boost = (fish.boostUntil ?? 0) > now ? 2 : 1;
+      this.grow(fish, add * this.growthMul() * boost);
     }
   }
 
@@ -398,7 +419,7 @@ export class Tank {
         if (!fish.warned && fish.hunger <= this.rules.warnHunger) {
           fish.warned = true;
           this.fx.push({ kind: "warn", fishId: fish.id, name: fish.name });
-          this.fx.push({ kind: "announce", text: `😵 Cá của ${fish.name} sắp đói lả, comment "ăn" đi!`, tone: "sad", mc: "warn" });
+          this.fx.push({ kind: "announce", text: `😵 Cá của ${fish.name} sắp đói lả, thả tim ❤️ cứu đi!`, tone: "sad", mc: "warn" });
         }
         if (fish.hunger <= 0) {
           fish.status = "exhausted";
@@ -520,7 +541,7 @@ export class Tank {
       this.nextDropAt = now + 4_000;
       this.fx.push({ kind: "announce", text: "🌧️ Trời mưa! Côn trùng rơi xuống — comment “đớp” để cá mình ăn trước!", tone: "info" });
     } else if (kind === "rainbow") {
-      this.fx.push({ kind: "announce", text: "🌈 Cầu vồng! Cho ăn lúc này được ×1,5 tăng trưởng", tone: "gold" });
+      this.fx.push({ kind: "announce", text: "🌈 Cầu vồng! Thả tim lúc này cá lớn ×1,5", tone: "gold" });
     } else if (kind === "stormWarn") {
       this.fx.push({ kind: "announce", text: "⚠️ Bão sắp tới! Cho cá ăn no đi nào!", tone: "sad" });
     } else {
@@ -561,7 +582,8 @@ export class Tank {
 
   startCleanup(now: number) {
     if (this.challenge) return false;
-    const needed = Math.round(Math.min(100, Math.max(15, this.fish.size * this.rules.cleanPerFish)));
+    const r = this.rules;
+    const needed = Math.round(Math.min(Math.max(r.cleanMinNeeded, r.cleanMaxNeeded), Math.max(r.cleanMinNeeded, this.fish.size * r.cleanPerFish)));
     this.challenge = { kind: "clean", count: 0, needed, endsAt: now + this.rules.cleanWindowMs, by: new Map() };
     this.dirty = true;
     this.fx.push({ kind: "announce", text: "🧽 Bể bẩn quá! Cả phòng comment “dọn” để làm sạch!", tone: "sad" });

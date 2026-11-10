@@ -84,8 +84,11 @@ export class DemoAdapter implements SourceAdapter {
     else if (roll < 0.9) {
       const list = [...this.keepers.values()];
       const k = list[Math.floor(Math.random() * list.length)];
-      // care thấp = hay quên cho ăn; một số người rời live hẳn.
-      if (k && Math.random() < k.care) this.emit({ type: "chat", eventId: this.id(), user: k.user, text: Math.random() < 0.8 ? "ăn" : "cho ăn" });
+      // care thấp = hay quên chăm; người chăm chủ yếu thả tim (cá lớn + no), thỉnh thoảng comment "ăn".
+      if (k && Math.random() < k.care) {
+        if (Math.random() < 0.75) this.emit({ type: "like", eventId: this.id(), user: k.user, count: 10 + Math.floor(Math.random() * 40) });
+        else this.emit({ type: "chat", eventId: this.id(), user: k.user, text: Math.random() < 0.8 ? "ăn" : "cho ăn" });
+      }
       if (k && Math.random() < 0.01) this.keepers.delete(k.user.userId);
     } else {
       const list = [...this.keepers.values()];
