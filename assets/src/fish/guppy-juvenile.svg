@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+  <radialGradient id="iris" cx="0.45" cy="0.4" r="0.65">
+    <stop offset="0" stop-color="#4A2C1E"/><stop offset="0.7" stop-color="#1E110B"/><stop offset="1" stop-color="#0E0805"/>
+  </radialGradient>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+  <filter id="soft4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+  <filter id="soft16" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter></defs>
+  <defs>
+    <radialGradient id="tail" gradientUnits="userSpaceOnUse" cx="480" cy="505" r="170">
+      <stop offset="0" stop-color="#D9ECF5"/><stop offset="0.5" stop-color="#B9D8EE" stop-opacity="0.95"/><stop offset="1" stop-color="#A6C4E8" stop-opacity="0.9"/>
+    </radialGradient>
+    <linearGradient id="body" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E9F6FF"/><stop offset="0.45" stop-color="#BFDDF2"/><stop offset="1" stop-color="#D9ECF5"/>
+    </linearGradient>
+    <linearGradient id="fin" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#B9D8EE" stop-opacity="0.9"/><stop offset="1" stop-color="#A6C4E8" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.6" stop-color="#fff" stop-opacity="0.7"/><stop offset="1" stop-color="#F3F8FF" stop-opacity="0.9"/>
+    </linearGradient>
+    <clipPath id="bodyClip"><path id="bodyPath" d="M850 505 C850 452 806 420 748 418 C660 415 565 446 470 480 C452 487 452 523 470 530 C565 564 660 596 748 592 C806 590 850 558 850 505 Z"/></clipPath>
+  </defs>
+  <g id="art">
+    <path d="M488 482 L340.7 407.5 Q341.9 427.9 323.9 437.7 Q329.2 457.5 313.5 470.6 Q322.7 488.9 310.0 505.0 Q322.7 521.1 313.5 539.4 Q329.2 552.5 323.9 572.3 Q341.9 582.1 340.7 602.5 L488 528 Z" fill="url(#tail)"/>
+    <path d="M480 505 Q406.257977798718 467.29889394612866 345.92359599766905 421.2197643247303" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M480 505 Q398.2890281595613 480.6669769030953 331.4345966537479 450.9266153402118" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M480 505 Q393.89124008257676 495.09852973219614 323.43861833195774 482.99673273821367" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M480 505 Q393.25681800965697 509.9628243245258 322.2851236539218 516.0284984989462" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M480 505 Q396.4134892296835 524.6102196796004 328.0245258721518 548.5782659546676" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M480 505 Q403.22329206295205 538.4005543344022 340.4059855690037 579.2234540764493" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.35"/>
+    
+    <!-- vây lưng dài nghiêng về sau -->
+    <path d="M640 428 C590 393 515 380.5 470 383 C520 400.5 540 455 525 470 Z" fill="url(#fin)"/>
+    <!-- vây bụng -->
+    <path d="M610 585 C585 607.5 550 620 517.5 622.5 C550 605 565 590 575 575 Z" fill="url(#fin)"/>
+    <use href="#bodyPath" fill="url(#body)"/>
+    <g clip-path="url(#bodyClip)">
+      <ellipse cx="680" cy="575" rx="220" ry="55" fill="url(#belly)"/>
+      <!-- nửa sau thân nhuộm màu đuôi -->
+      <ellipse cx="470" cy="505" rx="130" ry="90" fill="#B9D8EE" opacity="0.25" filter="url(#soft16)"/>
+      <ellipse cx="640" cy="610" rx="260" ry="40" fill="#7FA6C9" opacity="0.35" filter="url(#soft16)"/>
+    </g>
+    <path d="M725 440 C705 480 705 545 725 580" stroke="#8FB3D1" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.45"/>
+    <!-- vây ngực -->
+    <path d="M700 535 C670 550 650 575 652 600 C680 595 705 575 712 548 Z" fill="url(#fin)" opacity="0.85"/>
+    <!-- phản sáng -->
+    <path d="M560 455 C640 432 710 426 780 432" stroke="#fff" stroke-width="18" fill="none" stroke-linecap="round" opacity="0.75" filter="url(#soft4)"/>
+    
+  <circle cx="780" cy="478" r="56.00000000000001" fill="#FFF6EC" opacity="0.55"/>
+  <circle cx="780" cy="478" r="50" fill="url(#iris)"/>
+  <ellipse cx="795" cy="460.5" rx="18" ry="16" fill="#fff"/>
+  <circle cx="761" cy="499" r="7.5" fill="#fff" opacity="0.9"/>
+    <ellipse cx="800" cy="548" rx="24" ry="13" fill="#FF6F91" opacity="0.45" filter="url(#soft4)"/>
+    <path d="M826 522 Q836 532 846 522" stroke="#5B6F8A" stroke-width="6" fill="none" stroke-linecap="round"/>
+  </g></svg>

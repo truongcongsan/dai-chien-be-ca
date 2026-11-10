@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "be-ca-dev",
+      "runtimeExecutable": "corepack.cmd",
+      "runtimeArgs": ["pnpm", "dev"],
+      "port": 3320,
+      "url": "http://127.0.0.1:3320"
+    }
+  ]
+}

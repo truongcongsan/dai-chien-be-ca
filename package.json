@@ -1,0 +1,39 @@
+{
+  "name": "be-ca-hanh-phuc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n engine,web -c yellow,cyan \"tsx watch server/main.ts\" \"next dev -H 127.0.0.1 -p 3320\"",
+    "build": "next build",
+    "start": "concurrently -k -n engine,web -c yellow,cyan \"tsx server/main.ts\" \"next start -H 127.0.0.1 -p 3320\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "art:draw": "node scripts/draw-fish.mjs --export"
+  },
+  "dependencies": {
+    "concurrently": "^10.0.7",
+    "next": "^16.4.5",
+    "phaser": "^4.2.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tiktok-live-connector": "^2.5.0",
+    "tsx": "^4.23.15",
+    "ws": "^8.22.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
+    "playwright": "1.64.1",
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  }
+}

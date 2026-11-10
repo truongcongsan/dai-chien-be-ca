@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+  <radialGradient id="iris" cx="0.45" cy="0.4" r="0.65">
+    <stop offset="0" stop-color="#4A2C1E"/><stop offset="0.7" stop-color="#1E110B"/><stop offset="1" stop-color="#0E0805"/>
+  </radialGradient>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+  <filter id="soft4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+  <filter id="soft16" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter></defs>
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#A9B9A0"/><stop offset="0.4" stop-color="#D6DDCF"/><stop offset="0.7" stop-color="#F4F6F2"/><stop offset="1" stop-color="#E2E6EA"/>
+    </linearGradient>
+    <linearGradient id="red" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#FF3B4E" stop-opacity="0"/><stop offset="0.25" stop-color="#FF3B4E" stop-opacity="0.9"/><stop offset="1" stop-color="#E8203A" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="stripe" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#7FF6FF"/><stop offset="0.5" stop-color="#2FD2FF"/><stop offset="1" stop-color="#3A7BFF"/>
+    </linearGradient>
+    <linearGradient id="fin" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#E8EEF2" stop-opacity="0.85"/><stop offset="1" stop-color="#D2DEE8" stop-opacity="0.65"/>
+    </linearGradient>
+    <clipPath id="bodyClip"><path id="bodyPath" d="M860 505 C860 466 826 444 770 442 C650 438 520 462 400 486 C388 489 388 521 400 524 C520 548 650 572 770 568 C826 566 860 544 860 505 Z"/></clipPath>
+  </defs>
+  <g id="art">
+    <!-- đuôi chẻ -->
+    <path d="M410 492 C360 470 310 420 270 395 C290 455 315 495 340 505 C315 515 290 555 270 615 C310 590 360 540 410 518 Z" fill="url(#fin)"/>
+    <path d="M400 505 Q334 460.9 280 407" stroke="#B8C6D2" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.45"/><path d="M400 505 Q356 487 320 465" stroke="#B8C6D2" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.45"/><path d="M400 505 Q356 523 320 545" stroke="#B8C6D2" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.45"/><path d="M400 505 Q334 549.1 280 603" stroke="#B8C6D2" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.45"/>
+    <!-- vây lưng, vây hậu môn, vây mỡ -->
+    <path d="M610 450 C590 380 535 365 505 370 C545 410 548 462 545 462 Z" fill="url(#fin)"/>
+    <path d="M590 560 C560 615 480 630 440 615 C490 585 500 548 510 545 Z" fill="url(#fin)"/>
+    <ellipse cx="455" cy="476" rx="20" ry="11" transform="rotate(-15 455 476)" fill="url(#fin)"/>
+    <use href="#bodyPath" fill="url(#body)" opacity="0.95"/>
+    <g clip-path="url(#bodyClip)">
+      <!-- nửa sau bụng đỏ -->
+      <path d="M680 515 C600 518 500 520 380 515 L380 600 L700 600 Z" fill="url(#red)"/>
+      <!-- sọc neon phát sáng -->
+      <path d="M795 488 C700 488 560 495 420 503" stroke="#4FE6FF" stroke-width="44" fill="none" stroke-linecap="round" opacity="0.55" filter="url(#soft)"/>
+      <path d="M795 488 C700 488 560 495 420 503" stroke="url(#stripe)" stroke-width="24" fill="none" stroke-linecap="round" opacity="1"/>
+      <path d="M780 482 C700 482 580 488 470 494" stroke="#E8FFFF" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.8"/>
+      <ellipse cx="640" cy="580" rx="260" ry="30" fill="#9AA8B4" opacity="0.35" filter="url(#soft16)"/>
+    </g>
+    <path d="M745 452 C730 480 730 535 745 560" stroke="#A7B3B8" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.5"/>
+    <!-- vây ngực -->
+    <path d="M730 530 C700 540 680 560 680 580 C705 578 725 560 735 540 Z" fill="url(#fin)" opacity="0.9"/>
+    <!-- phản sáng -->
+    <path d="M560 470 C650 452 730 448 800 455" stroke="#fff" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.7" filter="url(#soft4)"/>
+    <!-- mắt có vành xanh -->
+    <circle cx="802" cy="490" r="48.8" fill="none" stroke="#4FE6FF" stroke-width="7" opacity="0.6"/>
+    
+  <circle cx="802" cy="490" r="44.800000000000004" fill="#FFF6EC" opacity="0.55"/>
+  <circle cx="802" cy="490" r="40" fill="url(#iris)"/>
+  <ellipse cx="814" cy="476" rx="14.399999999999999" ry="12.8" fill="#fff"/>
+  <circle cx="786.8" cy="506.8" r="6" fill="#fff" opacity="0.9"/>
+    <ellipse cx="820" cy="540" rx="18" ry="10" fill="#FF6F91" opacity="0.45" filter="url(#soft4)"/>
+    <path d="M838 522 Q847 530 856 520" stroke="#6A7480" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M560 476 Q560 492 576 492 Q560 492 560 508 Q560 492 544 492 Q560 492 560 476Z" fill="#F0FFFF" opacity="1"/><path d="M470 489 Q470 500 481 500 Q470 500 470 511 Q470 500 459 500 Q470 500 470 489Z" fill="#F0FFFF" opacity="1"/>
+  </g></svg>

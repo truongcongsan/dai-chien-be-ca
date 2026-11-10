@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+  <radialGradient id="iris" cx="0.45" cy="0.4" r="0.65">
+    <stop offset="0" stop-color="#4A2C1E"/><stop offset="0.7" stop-color="#1E110B"/><stop offset="1" stop-color="#0E0805"/>
+  </radialGradient>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+  <filter id="soft4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+  <filter id="soft16" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter></defs>
+  <defs>
+    <radialGradient id="body" cx="0.42" cy="0.28" r="0.8">
+      <stop offset="0" stop-color="#FFF3B0"/><stop offset="0.55" stop-color="#F8DE73"/><stop offset="1" stop-color="#E4BC4C"/>
+    </radialGradient>
+    <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFBF0" stop-opacity="0"/><stop offset="0.35" stop-color="#FFFBF0" stop-opacity="0.95"/><stop offset="1" stop-color="#EFE3CC"/>
+    </linearGradient>
+    <linearGradient id="fin" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#F8DE73"/><stop offset="1" stop-color="#FFF4C8" stop-opacity="0.85"/>
+    </linearGradient>
+    <clipPath id="bodyClip"><ellipse id="bodyShape" cx="580" cy="505" rx="210" ry="175"/></clipPath>
+  </defs>
+  <g id="art">
+    <!-- đuôi quạt nhỏ -->
+    <path d="M398 475 C338 415 283 410 268 435 C288 480 288 530 268 575 C283 600 338 595 398 535 Z" fill="url(#fin)"/>
+    <path d="M388 505 Q327.5 475.75 278 440" stroke="#E4BC4C" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M388 505 Q331.9 495.1 286 483" stroke="#E4BC4C" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M388 505 Q331.9 514.9 286 527" stroke="#E4BC4C" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M388 505 Q327.5 534.25 278 570" stroke="#E4BC4C" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/>
+    <!-- vây lưng + vây hậu môn sát đuôi -->
+    <path d="M461.1 378.1 Q408.6 346.3 339.9 389.5 Q359.0 438.0 400.9 444.7 Z" fill="url(#fin)"/><path d="M461.1 631.9 Q408.6 663.7 339.9 620.5 Q359.0 572.0 400.9 565.3 Z" fill="url(#fin)"/>
+    
+    <use href="#bodyShape" fill="url(#body)"/>
+    <g clip-path="url(#bodyClip)">
+      <ellipse cx="590" cy="613.5" rx="220.5" ry="108.5" fill="url(#belly)"/>
+      <ellipse cx="480" cy="360" rx="17" ry="14" fill="#8A5A1E" opacity="0.38"/><ellipse cx="560" cy="330" rx="12" ry="10" fill="#8A5A1E" opacity="0.38"/><ellipse cx="640" cy="345" rx="12" ry="10" fill="#8A5A1E" opacity="0.38"/><ellipse cx="430" cy="430" rx="17" ry="14" fill="#8A5A1E" opacity="0.38"/>
+      <ellipse cx="580" cy="680" rx="210" ry="60" fill="#C9A878" opacity="0.4" filter="url(#soft16)"/>
+    </g>
+    <!-- vây ngực tròn nhỏ -->
+    <path d="M620 525 C585 510 550 525 545 560 C575 580 610 565 620 525 Z" fill="url(#fin)" opacity="0.9"/>
+    <!-- phản sáng -->
+    <ellipse cx="540" cy="386" rx="94.5" ry="38" transform="rotate(-10 540 386)" fill="#fff" opacity="0.55" filter="url(#soft)"/>
+    <ellipse cx="500" cy="379" rx="34" ry="13" transform="rotate(-14 500 379)" fill="#fff" opacity="0.85"/>
+    
+  <circle cx="695.5" cy="461.25" r="73.92" fill="#FFF6EC" opacity="0.55"/>
+  <circle cx="695.5" cy="461.25" r="66" fill="url(#iris)"/>
+  <ellipse cx="715.3" cy="438.15" rx="23.759999999999998" ry="21.12" fill="#fff"/>
+  <circle cx="670.42" cy="488.97" r="9.9" fill="#fff" opacity="0.9"/>
+    <ellipse cx="710.2" cy="540" rx="30" ry="17" fill="#FF6F91" opacity="0.45" filter="url(#soft4)"/>
+    <!-- miệng chu tròn -->
+    <ellipse cx="782" cy="523" rx="15" ry="17" fill="#E89A5A" stroke="#A8601E" stroke-width="5"/>
+  </g></svg>

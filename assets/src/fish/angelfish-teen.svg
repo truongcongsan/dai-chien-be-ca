@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+  <radialGradient id="iris" cx="0.45" cy="0.4" r="0.65">
+    <stop offset="0" stop-color="#4A2C1E"/><stop offset="0.7" stop-color="#1E110B"/><stop offset="1" stop-color="#0E0805"/>
+  </radialGradient>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+  <filter id="soft4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+  <filter id="soft16" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter></defs>
+  <defs>
+    <radialGradient id="body" cx="0.65" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="0.6" stop-color="#E9EEF5"/><stop offset="1" stop-color="#BFC9D8"/>
+    </radialGradient>
+    <linearGradient id="finUp" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#E6ECF4" stop-opacity="0.95"/><stop offset="1" stop-color="#C7D2E2" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="finDown" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E6ECF4" stop-opacity="0.95"/><stop offset="1" stop-color="#C7D2E2" stop-opacity="0.75"/>
+    </linearGradient>
+    <radialGradient id="gold" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFD36E" stop-opacity="0.85"/><stop offset="1" stop-color="#FFD36E" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="bodyClip"><path id="bodyPath" d="M860 505 C860 420 800 330 690 318 C600 310 540 380 500 450 C488 475 488 535 500 560 C540 630 600 700 690 692 C800 680 860 590 860 505 Z"/></clipPath>
+  </defs>
+  <g id="art">
+    <!-- đuôi quạt có sợi kéo dài -->
+    <path d="M505 470 C450 430 420 417 376 393 C394 457 394 553 376 617 C420 593 450 580 505 540 Z" fill="url(#finUp)"/>
+    <path d="M500 505 Q434 461.8 380 409" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M500 505 Q431.25 490.6 375 473" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M500 505 Q431.25 519.4 375 537" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M500 505 Q434 548.2 380 601" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/>
+    <path d="M760 410 C700 229 588 131 512 121 C536 235 545 355 520 435 C580 385 690 395 760 410 Z" fill="url(#finUp)"/>
+      <path d="M640 385 Q596 270.7 560 131" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M640 385 Q620.2 296.8 604 189" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M640 385 Q645.5 326.5 650 255" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/>
+    <path d="M760 600 C700 781 588 879 512 889 C536 775 545 655 520 575 C580 625 690 615 760 600 Z" fill="url(#finDown)"/>
+      <path d="M640 625 Q596 739.3 560 879" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M640 625 Q620.2 713.2 604 821" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M640 625 Q645.5 683.5 650 755" stroke="#8E9AAE" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/>
+    <use href="#bodyPath" fill="url(#body)"/>
+    <g clip-path="url(#bodyClip)">
+      <path d="M560 330 C540 430 540 580 560 680" stroke="#2F3A5C" stroke-width="34" fill="none" opacity="0.6375" stroke-linecap="round"/><path d="M650 330 C630 430 630 580 650 680" stroke="#2F3A5C" stroke-width="34" fill="none" opacity="0.6375" stroke-linecap="round"/><path d="M745 330 C725 430 725 580 745 680" stroke="#2F3A5C" stroke-width="22" fill="none" opacity="0.6375" stroke-linecap="round"/>
+      <ellipse cx="790" cy="420" rx="110" ry="80" fill="url(#gold)" opacity="0.4"/>
+      <ellipse cx="660" cy="700" rx="260" ry="70" fill="#9AA6BA" opacity="0.4" filter="url(#soft16)"/>
+    </g>
+    <!-- sợi vây bụng dài -->
+    <path d="M760 615 C742 711 696 791 642 839" stroke="#D6DEEA" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.95"/>
+    <path d="M745 612 C722 700 676 772 617 812" stroke="#C3CDDB" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.9"/>
+    <path d="M770 520 C740 535 722 560 724 585 C752 580 772 558 778 530 Z" fill="url(#finDown)" opacity="0.9"/>
+    <path d="M610 360 C680 330 760 335 815 380" stroke="#fff" stroke-width="18" fill="none" stroke-linecap="round" opacity="0.75" filter="url(#soft4)"/>
+    
+  <circle cx="790" cy="470" r="47.040000000000006" fill="#FFF6EC" opacity="0.55"/>
+  <circle cx="790" cy="470" r="42" fill="url(#iris)"/>
+  <ellipse cx="802.6" cy="455.3" rx="15.12" ry="13.44" fill="#fff"/>
+  <circle cx="774.04" cy="487.64" r="6.3" fill="#fff" opacity="0.9"/>
+    <ellipse cx="815" cy="540" rx="22" ry="12" fill="#FF8FAB" opacity="0.45" filter="url(#soft4)"/>
+    <path d="M838 515 Q848 525 856 514" stroke="#4A5470" stroke-width="6" fill="none" stroke-linecap="round"/>
+  </g></svg>

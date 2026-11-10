@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+  <radialGradient id="iris" cx="0.45" cy="0.4" r="0.65">
+    <stop offset="0" stop-color="#4A2C1E"/><stop offset="0.7" stop-color="#1E110B"/><stop offset="1" stop-color="#0E0805"/>
+  </radialGradient>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+  <filter id="soft4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+  <filter id="soft16" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter></defs>
+  <defs>
+    <radialGradient id="body" cx="0.6" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#FFFDF8"/><stop offset="0.6" stop-color="#EEE7DC"/><stop offset="1" stop-color="#CFC6B8"/>
+    </radialGradient>
+    <radialGradient id="yolk" cx="0.4" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#FFF4C2"/><stop offset="0.6" stop-color="#FFDB6E"/><stop offset="1" stop-color="#F0B53C"/>
+    </radialGradient>
+    <linearGradient id="fold" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#F4EFE6" stop-opacity="0.9"/><stop offset="1" stop-color="#E6DED0" stop-opacity="0.55"/>
+    </linearGradient>
+  </defs>
+  <g id="art">
+    <!-- màng vây liền (fin fold) -->
+    <path d="M520 400 C430 380 300 400 190 450 C150 470 140 540 190 565 C300 615 430 640 520 620 Z" fill="url(#fold)" stroke="#D8CFC1" stroke-width="4"/>
+    <path d="M470 510 Q321.5 485.25 200 455" stroke="#CFC5B5" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.4"/><path d="M470 510 Q307.75 501 175 490" stroke="#CFC5B5" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.4"/><path d="M470 510 Q305 516.75 170 525" stroke="#CFC5B5" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.4"/><path d="M470 510 Q310.5 532.5 180 560" stroke="#CFC5B5" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.4"/><path d="M470 510 Q327 546 210 590" stroke="#CFC5B5" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.4"/>
+    <!-- thân thon -->
+    <path d="M760 500 C760 390 680 330 600 340 C520 350 420 440 250 495 C230 502 230 518 250 525 C420 570 520 660 600 665 C690 670 760 610 760 500 Z" fill="url(#body)" opacity="0.92"/>
+    <!-- dây sống mờ -->
+    <path d="M560 500 C470 500 360 505 255 510" stroke="#C8BEB0" stroke-width="6" fill="none" opacity="0.5" stroke-linecap="round"/>
+    <!-- túi noãn hoàng -->
+    <ellipse cx="610" cy="590" rx="105" ry="72" fill="url(#yolk)" opacity="0.95"/>
+    <ellipse cx="575" cy="565" rx="34" ry="16" fill="#fff" opacity="0.6"/>
+    <!-- phản sáng -->
+    <path d="M560 380 C610 355 680 360 720 395" stroke="#fff" stroke-width="22" fill="none" stroke-linecap="round" opacity="0.8" filter="url(#soft4)"/>
+    
+  <circle cx="675" cy="470" r="69.44000000000001" fill="#FFF6EC" opacity="0.55"/>
+  <circle cx="675" cy="470" r="62" fill="url(#iris)"/>
+  <ellipse cx="693.6" cy="448.3" rx="22.32" ry="19.84" fill="#fff"/>
+  <circle cx="651.44" cy="496.04" r="9.299999999999999" fill="#fff" opacity="0.9"/>
+    <ellipse cx="700" cy="560" rx="26" ry="14" fill="#FF8FAB" opacity="0.45" filter="url(#soft4)"/>
+    <path d="M738 532 Q748 542 758 532" stroke="#8C7B68" stroke-width="5" fill="none" stroke-linecap="round"/>
+  </g></svg>
