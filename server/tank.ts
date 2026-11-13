@@ -5,9 +5,9 @@ import {
   GIFT_HATCH_STAGE,
   LEGACY_STAGE_MAP,
   MAX_STAGE,
-  SMALL_STAGE,
   REWARDS,
   SPECIES,
+  TIER_GROWTH,
   STAGES,
   stageLabel,
   matchGift,
@@ -52,9 +52,13 @@ export interface Fish {
   shieldCharges?: number;
   boostUntil?: number;
   immortalUntil?: number;
-  bites?: number;
-  biteAutoAt?: number;
+  /** Lần cắn gần nhất của cá này (kể cả trượt): mỗi cá cắn 1 lần / biteAttackCooldownMs. */
+  lastBiteAt?: number;
   lastBittenAt?: number;
+  /** Khiên miễn cắn (cá mới nở, vừa bị cắn trúng/hụt). Mèo cào thì mất. */
+  guardUntil?: number;
+  /** Lượt "Cắn chết" (quà): cú cắn tới chắc chắn trúng và giết luôn. */
+  killBites?: number;
 }
 
 interface Egg {
@@ -83,6 +87,8 @@ interface Owner {
   eggDiscount?: number;
   /** Cá vừa chết, giữ lại để quà Hồi sinh cứu trong reviveWindowMs. */
   lastDead?: { fish: Fish; at: number };
+  /** Số lần vô địch. */
+  championships?: number;
 }
 
 interface Saved {
@@ -93,9 +99,10 @@ interface Saved {
   dirt?: number;
   /** Số cấp tối đa khi lưu; thiếu = bản cũ 7 cấp, được đổi sang thang hiện tại lúc khôi phục. */
   maxStage?: number;
+  round?: number;
+  lastChampion?: { name: string; round: number } | null;
 }
 
-const BITE_AUTO_RETRY = 30_000;
 
 type Challenge =
   | { kind: "clean"; count: number; needed: number; endsAt: number; by: Map<string, number> }
@@ -124,10 +131,16 @@ export class Tank {
   gifts: GiftMapping[] = DEFAULT_GIFTS.map((g) => ({ ...g }));
   audio: AudioSettings = { ...DEFAULT_AUDIO };
   /** Quà không có trong bảng (để Admin gán). */
-  readonly unmapped = new Map<string, { giftId: number | null; giftName: string; diamonds: number | null; count: number; lastAt: number }>();
+  readonly unmapped = new Map<string, { giftId: number | null; giftName: string; diamonds: number | null; count: number; lastAt: number; image?: string | null }>();
   log: LogEntry[] = [];
   crownId: string | null = null;
   private crownAt = 0;
+  /** Lúc cá chúa hiện tại lên ngôi (lùi theo thời gian đóng băng). */
+  private crownSince = 0;
+  round = 1;
+  lastChampion: { name: string; round: number } | null = null;
+  /** Nguồn ngẫu nhiên (test thay được để kiểm soát cú cắn trượt). */
+  random: () => number = Math.random;
   private lastTick: number | null = null;
   private seq = 0;
   private dirty = true;
@@ -321,6 +334,7 @@ export class Tank {
       likeCarry: 0,
       likeWindowStart: now,
       likeWindowGrowth: 0,
+      guardUntil: now + this.rules.newbieImmuneMs,
     };
     this.fish.set(fish.id, fish);
     const o = this.owners.get(egg.ownerId);
@@ -370,8 +384,9 @@ export class Tank {
   }
 
   private grow(fish: Fish, amount: number) {
-    if (fish.stage >= MAX_STAGE) return;
-    fish.growth += amount;
+    if (fish.stage >= MAX_STAGE || amount <= 0) return;
+    // Cá hiếm lớn ×1.5, cá rồng ×1.8.
+    fish.growth += amount * TIER_GROWTH[SPECIES[fish.species].tier];
     this.dirty = true;
     while (fish.stage < MAX_STAGE && fish.growth >= STAGES[fish.stage].growthNeed) {
       fish.growth -= STAGES[fish.stage].growthNeed;
@@ -383,6 +398,44 @@ export class Tank {
       this.addLog("game", `${fish.name} lên ${stageLabel(fish.stage)}`);
     }
     if (fish.stage >= MAX_STAGE) fish.growth = 0;
+  }
+
+  /** Lên thẳng k cấp (quà): giữ % tiến độ trong cấp, dừng ở MAX_STAGE. Trả về số cấp thật sự lên. */
+  levelUp(fish: Fish, k: number, quiet = false) {
+    const from = fish.stage;
+    if (from >= MAX_STAGE || k <= 0) return 0;
+    const need = STAGES[from].growthNeed;
+    const pct = need ? Math.min(0.99, fish.growth / need) : 0;
+    fish.stage = Math.min(MAX_STAGE, from + Math.floor(k));
+    fish.growth = fish.stage >= MAX_STAGE ? 0 : Math.floor(pct * STAGES[fish.stage].growthNeed);
+    const o = this.owners.get(fish.ownerId);
+    if (o) o.bestStage = Math.max(o.bestStage, fish.stage);
+    this.dirty = true;
+    this.fx.push({ kind: "levelup", fishId: fish.id, stage: fish.stage, name: fish.name });
+    this.addLog("game", `${fish.name} lên thẳng ${stageLabel(fish.stage)} (+${fish.stage - from} cấp)`);
+    if (!quiet) this.fx.push({ kind: "announce", text: `🚀 Cá của ${fish.name} vọt lên ${stageLabel(fish.stage)}!`, tone: "gold" });
+    return fish.stage - from;
+  }
+
+  /** Tụt k cấp (bị cắn, mèo cào), tối thiểu Lv1; mất tiến độ trong cấp. */
+  levelDown(fish: Fish, k: number) {
+    const from = fish.stage;
+    fish.stage = Math.max(1, from - Math.floor(k));
+    fish.growth = 0;
+    this.dirty = true;
+    return from - fish.stage;
+  }
+
+  /** Admin đặt cấp bất kỳ cho cá của một người chơi. */
+  setLevel(fish: Fish, stage: number) {
+    const from = fish.stage;
+    fish.stage = Math.max(1, Math.min(MAX_STAGE, Math.round(stage)));
+    fish.growth = 0;
+    const o = this.owners.get(fish.ownerId);
+    if (o) o.bestStage = Math.max(o.bestStage, fish.stage);
+    this.dirty = true;
+    this.fx.push({ kind: "levelup", fishId: fish.id, stage: fish.stage, name: fish.name });
+    this.addLog("system", `Admin đặt cá của ${fish.name}: Lv${from} → Lv${fish.stage}`);
   }
 
   // ---------- thời gian ----------
@@ -398,8 +451,10 @@ export class Tank {
     const dt = this.lastTick === null ? 0 : Math.max(0, now - this.lastTick);
     this.lastTick = now;
     if (!this.live) {
-      // Đóng băng: trứng cũng không hết hạn khi tắt live.
+      // Đóng băng: trứng cũng không hết hạn khi tắt live. Cá chúa vẫn cập nhật (vd. Admin nở/xóa cá lúc chưa live).
       for (const egg of this.eggs.values()) egg.expiresAt += dt;
+      this.crownSince += dt;
+      this.updateCrown(now);
       return;
     }
     for (const egg of [...this.eggs.values()]) {
@@ -439,6 +494,9 @@ export class Tank {
     }
     this.tickGifts(now);
     this.updateCrown(now);
+    // Cá chúa giữ ngôi đủ lâu thì vô địch → sang màn mới.
+    const king = this.crownId ? this.fish.get(this.crownId) : null;
+    if (king && now - this.crownSince >= this.rules.championHoldMs) this.declareChampion(king.ownerId, king.name, now, "crown");
   }
 
   // ---------- môi trường: thời tiết, đêm, nước bẩn, thử thách ----------
@@ -653,16 +711,27 @@ export class Tank {
   private predatorLose(now: number) {
     this.challenge = null;
     this.dirty = true;
-    const small = [...this.fish.values()].filter((f) => f.stage <= SMALL_STAGE && f.growth > 0).sort(() => Math.random() - 0.5);
-    const victims = small.slice(0, this.rules.predatorVictims);
-    for (const f of victims) f.growth = Math.max(0, f.growth - STAGES[f.stage].growthNeed * 0.3);
+    // Mèo cào những cá TO NHẤT: có khiên thì mất khiên, không thì tụt cấp.
+    const victims = this.ranked().slice(0, this.rules.predatorVictims);
+    const lines: string[] = [];
+    for (const f of victims) {
+      if (this.hasGuard(f, now) || this.hasShield(f, now)) {
+        f.guardUntil = 0;
+        f.shieldUntil = 0;
+        f.shieldCharges = 0;
+        lines.push(`${f.name} mất khiên`);
+      } else {
+        const lost = this.levelDown(f, this.rules.predatorLevelLoss);
+        lines.push(`${f.name} −${lost} cấp`);
+      }
+    }
     this.fx.push({ kind: "predatorLose", victims: victims.map((f) => f.id) });
     this.fx.push({
       kind: "announce",
-      text: victims.length ? `😿 Mèo khều mất tăng trưởng của ${victims.length} bé cá nhỏ…` : "🐱 Mèo bỏ đi tay không",
+      text: victims.length ? `😿 Mèo cào cá to nhất: ${lines.join(", ")}` : "🐱 Mèo bỏ đi tay không",
       tone: "sad",
     });
-    this.addLog("game", `Đuổi mèo thất bại, ${victims.length} cá bị khều`);
+    this.addLog("game", `Đuổi mèo thất bại: ${lines.join(", ") || "không ai"}`);
     void now;
   }
 
@@ -700,6 +769,18 @@ export class Tank {
     const thanks = (text: string) =>
       this.fx.push({ kind: "announce", text: `🎁 ${o.name} tặng ${giftName}${n > 1 ? ` ×${n}` : ""}: ${text}`, tone: "gold" });
 
+    if (reward === "doom") {
+      // Hủy diệt: diệt cả bể, người tặng vô địch ngay → sang màn mới.
+      const players = this.ranked().map((f) => f.ownerId);
+      const n = this.fish.size;
+      this.totals.died += n;
+      this.fish.clear();
+      this.crownId = null;
+      thanks(`☄️ HỦY DIỆT! ${n} con cá bay màu`);
+      this.addLog("game", `${o.name} hủy diệt cả bể (${n} cá)`);
+      this.declareChampion(o.id, o.name, now, "doom", players);
+      return null;
+    }
     if (reward === "legendaryEgg") {
       if (fish) {
         fish.species = "dragonfish";
@@ -735,13 +816,15 @@ export class Tank {
       }
     }
     if (reward === "foodRain") {
+      const levels = 5 * Math.min(n, 3);
       for (const f of this.fish.values()) {
         f.hunger = Math.min(100, f.hunger + 20 * Math.min(n, 3));
         if (f.status === "exhausted") (f.status = "alive"), (f.exhaustedFor = 0);
         f.warned = false;
+        this.levelUp(f, levels, true);
       }
       this.fx.push({ kind: "foodRain" });
-      thanks("cả bể được ăn no! 🍱");
+      thanks(`cả bể ăn no và lên ${levels} cấp! 🍱`);
       return fish;
     }
     if (reward === "hatch") {
@@ -800,17 +883,16 @@ export class Tank {
         break;
       }
       case "potion":
-        fish.boostUntil = Math.max(now, fish.boostUntil ?? 0) + r.potionMs * Math.min(n, 6);
-        this.grow(fish, 20 * Math.min(n, 5));
+        // Tăng 10lv mỗi lần tặng (tối đa 5 lần một lúc).
+        this.levelUp(fish, 10 * Math.min(n, 5), true);
         break;
-      case "bite":
-        if (!r.attackEnabled) {
-          this.applyToFish(fish, "food", n, now);
-          return;
-        }
-        fish.bites = Math.min(3, (fish.bites ?? 0) + n);
-        fish.biteAutoAt = now + r.biteAutoMs;
-        this.fx.push({ kind: "announce", text: `🦷 ${fish.name} có răng nanh! Comment "cắn @tên" để cắn cá nhỏ hơn`, tone: "info" });
+      case "megaPotion":
+        // Tăng 35lv mỗi lần tặng (tối đa 3 lần một lúc).
+        this.levelUp(fish, 35 * Math.min(n, 3), true);
+        break;
+      case "killBite":
+        fish.killBites = Math.min(3, (fish.killBites ?? 0) + n);
+        this.fx.push({ kind: "announce", text: `🗡️ ${fish.name} có Cắn chết! Comment "cắn @tên" để đớp chết cá nhỏ hơn`, tone: "gold" });
         break;
       case "revive":
         if (fish.status === "exhausted") {
@@ -838,11 +920,20 @@ export class Tank {
     return exact ?? list.find((f) => normalize(f.name).startsWith(t) || normalize(this.owners.get(f.ownerId)?.uniqueId ?? "").startsWith(t)) ?? null;
   }
 
+  /** "cắn @tên": ai có cá cũng cắn được, mỗi cá 1 lần / biteAttackCooldownMs (kể cả cắn trượt). */
   biteByName(user: SourceUser, target: string, now: number) {
+    if (!this.rules.attackEnabled) return "tắt";
     const att = this.fishOf(user.userId);
-    if (!att || !(att.bites ?? 0)) return "không có răng";
+    if (!att) return "không có cá";
     const vic = this.findByName(target);
     if (!vic) return "không thấy cá";
+    // Lượt "Cắn chết" (quà) không phải chờ hồi.
+    if ((att.killBites ?? 0) > 0) return this.resolveBite(att, vic, now, true);
+    const wait = (att.lastBiteAt ?? -Infinity) + this.rules.biteAttackCooldownMs - now;
+    if (wait > 0) {
+      this.fx.push({ kind: "announce", text: `🦷 ${att.name} cắn lại sau ${Math.ceil(wait / 1000)} giây nữa`, tone: "info", mc: "skip" });
+      return "chờ";
+    }
     return this.resolveBite(att, vic, now);
   }
 
@@ -851,32 +942,40 @@ export class Tank {
     const r = this.rules;
     if (vic.id === att.id) return "chính mình";
     if (att.stage < vic.stage + r.biteStageGap) return "chưa đủ lớn";
-    if (now - vic.bornAt < r.newbieImmuneMs) return "cá mới";
     if ((vic.immortalUntil ?? 0) > now) return "bất tử";
-    if (vic.lastBittenAt && now - vic.lastBittenAt < r.biteCooldownMs) return "vừa bị cắn";
+    if (this.hasGuard(vic, now)) return "khiên";
     return null;
   }
 
-  resolveBite(att: Fish, vic: Fish, now: number) {
+  private hasGuard(f: Fish, now: number) {
+    return (f.guardUntil ?? 0) > now;
+  }
+
+  private hasShield(f: Fish, now: number) {
+    return (f.shieldUntil ?? 0) > now && (f.shieldCharges ?? 0) > 0;
+  }
+
+  /** `deadly`: lượt Cắn chết — không hụt, không chờ hồi, cá bị cắn chết luôn. */
+  resolveBite(att: Fish, vic: Fish, now: number, deadly = false) {
     if (!this.rules.attackEnabled) return "tắt";
     const block = this.biteBlock(att, vic, now);
     if (block) {
       const why: Record<string, string> = {
         "chưa đủ lớn": `phải lớn hơn ít nhất ${this.rules.biteStageGap} cấp`,
-        "cá mới": "cá mới nở đang được bảo vệ",
+        "khiên": "cá đang có khiên 🛡️",
         "bất tử": "cá đang bất tử",
-        "vừa bị cắn": "cá vừa bị cắn, đang được bảo vệ",
         "chính mình": "không tự cắn được",
       };
       this.fx.push({ kind: "announce", text: `🦷 ${att.name} chưa cắn được ${vic.name}: ${why[block]}`, tone: "info", mc: "skip" });
       return block;
     }
-    att.bites = Math.max(0, (att.bites ?? 0) - 1);
-    att.biteAutoAt = att.bites ? now + this.rules.biteAutoMs : 0;
+    const r = this.rules;
+    if (deadly) att.killBites = Math.max(0, (att.killBites ?? 0) - 1);
+    else att.lastBiteAt = now;
     att.activeAt = now;
     vic.lastBittenAt = now;
     this.dirty = true;
-    if ((vic.shieldUntil ?? 0) > now && (vic.shieldCharges ?? 0) > 0) {
+    if (this.hasShield(vic, now)) {
       vic.shieldCharges = (vic.shieldCharges ?? 1) - 1;
       if (!vic.shieldCharges) vic.shieldUntil = 0;
       this.fx.push({ kind: "bite", attackerId: att.id, victimId: vic.id, blocked: true });
@@ -884,32 +983,77 @@ export class Tank {
       this.addLog("game", `${att.name} cắn ${vic.name} — bị khiên chặn`);
       return "khiên";
     }
+    if (!deadly && this.random() * 100 < r.biteMissPct) {
+      vic.guardUntil = now + r.biteCooldownMs; // cắn hụt: cá kia được tặng khiên
+      this.fx.push({ kind: "bite", attackerId: att.id, victimId: vic.id, blocked: false, missed: true });
+      this.fx.push({ kind: "announce", text: `💨 ${att.name} đớp hụt cá của ${vic.name}! ${vic.name} được khiên 🛡️`, tone: "info" });
+      this.addLog("game", `${att.name} cắn ${vic.name} — trượt`);
+      return "trượt";
+    }
     this.fx.push({ kind: "bite", attackerId: att.id, victimId: vic.id, blocked: false });
-    const o = this.owners.get(vic.ownerId);
-    if (o) o.eggDiscount = this.rules.eggDiscountPct;
-    this.kill(vic, now, `🦈 ${att.name} đớp mất cá của ${vic.name}!`);
-    this.fx.push({ kind: "announce", text: `🥚 ${vic.name} thả trứng lại chỉ cần ${100 - this.rules.eggDiscountPct}% tim`, tone: "info", mc: "skip" });
-    this.grow(att, this.rules.biteGrowth);
-    this.addLog("game", `${att.name} cắn chết cá của ${vic.name}`);
-    return "ok";
+    this.grow(att, r.biteGrowth);
+    if (deadly || vic.stage <= r.biteLevelLoss) {
+      const o = this.owners.get(vic.ownerId);
+      if (o) o.eggDiscount = r.eggDiscountPct;
+      this.kill(vic, now, deadly ? `🗡️ ${att.name} CẮN CHẾT cá của ${vic.name}!` : `🦈 ${att.name} đớp mất cá của ${vic.name}!`);
+      this.fx.push({ kind: "announce", text: `🥚 ${vic.name} thả trứng lại chỉ cần ${100 - r.eggDiscountPct}% tim`, tone: "info", mc: "skip" });
+      this.addLog("game", `${att.name} cắn chết cá của ${vic.name}`);
+      return "chết";
+    }
+    const lost = this.levelDown(vic, r.biteLevelLoss);
+    vic.guardUntil = now + r.biteCooldownMs; // cắn trúng: cá kia được tặng khiên
+    this.fx.push({ kind: "announce", text: `🦈 ${att.name} cắn ${vic.name}: −${lost} cấp (còn Lv${vic.stage}) · ${vic.name} được khiên 🛡️`, tone: "sad" });
+    this.addLog("game", `${att.name} cắn ${vic.name}: −${lost} cấp`);
+    return "trúng";
   }
 
-  /** Có răng mà không ra lệnh thì tự cắn một cá nhỏ hơn không có khiên. */
+  // ---------- cá chúa, vô địch, màn mới ----------
+
+  /**
+   * Phong vô địch cho người chơi rồi sang màn mới: mọi người chơi trở về dạng trứng,
+   * nhà vô địch được trứng cá rồng. `players` = chủ cá theo thứ hạng (mặc định: cá đang có trong bể).
+   */
+  declareChampion(ownerId: string, name: string, now: number, how: "crown" | "doom", players = this.ranked().map((f) => f.ownerId)) {
+    const o = this.owners.get(ownerId);
+    if (o) o.championships = (o.championships ?? 0) + 1;
+    const round = this.round;
+    this.lastChampion = { name, round };
+    this.round++;
+    this.fx.push({ kind: "champion", name, round, how });
+    this.fx.push({ kind: "announce", text: `🏆 ${name} VÔ ĐỊCH màn ${round}! Màn ${this.round} bắt đầu, ai cũng về trứng — nhà vô địch được trứng rồng 🐉`, tone: "gold" });
+    this.addLog("game", `${name} vô địch màn ${round} (${how === "doom" ? "hủy diệt" : "giữ ngôi cá chúa"})`);
+    this.startRound(ownerId, players, now);
+  }
+
+  private startRound(championId: string, players: string[], now: number) {
+    this.fish.clear();
+    this.eggs.clear();
+    this.waiting = [];
+    this.crownId = null;
+    this.challenge = null;
+    this.dirty = true;
+    const order = [championId, ...players.filter((id) => id !== championId)];
+    const seen = new Set<string>();
+    for (const id of order) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const o = this.owners.get(id);
+      if (!o) continue;
+      o.retryAt = 0;
+      const species: SpeciesId = id === championId ? "dragonfish" : randomCommonSpecies();
+      // Nhà vô địch luôn có trứng ngay; người khác theo số chỗ nạp trứng, còn lại vào hàng chờ.
+      if (id === championId || this.hasRoom()) this.openEgg(id, o.name, species, now);
+      else this.waiting.push({ ownerId: id, name: o.name, species, likes: 0 });
+    }
+  }
+
+  /** Hết hạn khiên, thuốc lớn, bất tử. */
   private tickGifts(now: number) {
     for (const f of this.fish.values()) {
       if ((f.shieldUntil ?? 0) && (f.shieldUntil ?? 0) <= now) (f.shieldUntil = 0), (f.shieldCharges = 0), (this.dirty = true);
+      if ((f.guardUntil ?? 0) && (f.guardUntil ?? 0) <= now) (f.guardUntil = 0), (this.dirty = true);
       if ((f.boostUntil ?? 0) && (f.boostUntil ?? 0) <= now) (f.boostUntil = 0), (this.dirty = true);
       if ((f.immortalUntil ?? 0) && (f.immortalUntil ?? 0) <= now) (f.immortalUntil = 0), (this.dirty = true);
-    }
-    if (!this.rules.attackEnabled) return;
-    for (const att of [...this.fish.values()]) {
-      if (!(att.bites ?? 0) || !att.biteAutoAt || now < att.biteAutoAt || !this.fish.has(att.id)) continue;
-      const prey = [...this.fish.values()].filter((v) => !this.biteBlock(att, v, now) && !((v.shieldUntil ?? 0) > now));
-      if (!prey.length) {
-        att.biteAutoAt = now + BITE_AUTO_RETRY;
-        continue;
-      }
-      this.resolveBite(att, prey[Math.floor(Math.random() * prey.length)], now);
     }
   }
 
@@ -962,19 +1106,24 @@ export class Tank {
   }
 
   private updateCrown(now: number) {
-    const best = this.ranked()[0];
-    if (!best || best.id === this.crownId) return;
+    // Chỉ cá từ crownMinStage mới được làm cá chúa.
+    const best = this.ranked().find((f) => f.stage >= this.rules.crownMinStage);
+    if (!best) {
+      if (this.crownId) (this.crownId = null), (this.dirty = true);
+      return;
+    }
+    if (best.id === this.crownId) return;
     const current = this.crownId ? this.fish.get(this.crownId) : null;
     if (current && this.rank(best) <= this.rank(current)) return;
     // Cùng cấp thì chờ cooldown để vương miện không nhảy qua lại; hơn hẳn một cấp thì đổi ngay.
     if (current && best.stage === current.stage && now - this.crownAt < this.rules.crownCooldownMs) return;
     this.crownId = best.id;
     this.crownAt = now;
+    this.crownSince = now; // bộ đếm vô địch chạy lại từ đầu
     this.dirty = true;
-    if (best.stage >= 2) {
-      this.fx.push({ kind: "crown", fishId: best.id, name: best.name });
-      this.fx.push({ kind: "announce", text: `👑 ${best.name} là vua bể mới!`, tone: "gold" });
-    }
+    const mins = Math.round(this.rules.championHoldMs / 60_000);
+    this.fx.push({ kind: "crown", fishId: best.id, name: best.name });
+    this.fx.push({ kind: "announce", text: `👑 Cá của ${best.name} là cá chúa! Giữ ngôi ${mins} phút là VÔ ĐỊCH`, tone: "gold" });
   }
 
   // ---------- đầu ra ----------
@@ -1010,11 +1159,14 @@ export class Tank {
       hunger: Math.round(f.hunger),
       status: f.status,
       crowned: f.id === this.crownId,
-      badges: (this.owners.get(f.ownerId)?.storms ?? 0) > 0 ? "⚡" : "",
-      shield: (f.shieldUntil ?? 0) > this.lastNow && (f.shieldCharges ?? 0) > 0,
+      badges: `${(this.owners.get(f.ownerId)?.championships ?? 0) > 0 ? "🏆" : ""}${(this.owners.get(f.ownerId)?.storms ?? 0) > 0 ? "⚡" : ""}`,
+      // Khiên quà (chặn 1 cú) hoặc khiên miễn cắn (cá mới nở, vừa bị cắn).
+      shield: this.hasShield(f, this.lastNow) || this.hasGuard(f, this.lastNow),
+      killBite: (f.killBites ?? 0) > 0,
       boost: (f.boostUntil ?? 0) > this.lastNow,
+      // Đã từng cắn và hết thời gian chờ: hiện 🦷 trên đầu (cắn tiếp được).
+      canBite: this.rules.attackEnabled > 0 && f.lastBiteAt !== undefined && this.lastNow - f.lastBiteAt >= this.rules.biteAttackCooldownMs,
       immortal: (f.immortalUntil ?? 0) > this.lastNow,
-      bites: f.bites ?? 0,
       activeAt: f.activeAt,
     };
   }
@@ -1052,11 +1204,17 @@ export class Tank {
       },
       challenge: this.challengeView(),
       audio: this.audio,
-      gifts: this.gifts.filter((g) => g.enabled).sort((a, b) => a.coins - b.coins).map((g) => ({ giftName: g.giftName, coins: g.coins, reward: g.reward })),
+      gifts: this.gifts.filter((g) => g.enabled).sort((a, b) => a.coins - b.coins).map((g) => ({ giftName: g.giftName, coins: g.coins, reward: g.reward, image: g.image ?? null })),
       top: this.ranked()
         .slice(0, 3)
         .map((f) => ({ name: f.name, stage: f.stage, growth: this.fishView(f).growth, species: f.species, crowned: f.id === this.crownId })),
       totals: { ...this.totals },
+      round: this.round,
+      crown: (() => {
+        const king = this.crownId ? this.fish.get(this.crownId) : null;
+        return king ? { name: king.name, holdEndsAt: this.crownSince + this.rules.championHoldMs } : null;
+      })(),
+      champion: this.lastChampion,
     };
   }
 
@@ -1075,7 +1233,7 @@ export class Tank {
   // ---------- lưu trữ ----------
 
   serialize(): Saved {
-    return { fish: [...this.fish.values()], owners: [...this.owners.values()], totals: this.totals, nextId: this.nextId, dirt: this.dirt, maxStage: MAX_STAGE };
+    return { fish: [...this.fish.values()], owners: [...this.owners.values()], totals: this.totals, nextId: this.nextId, dirt: this.dirt, maxStage: MAX_STAGE, round: this.round, lastChampion: this.lastChampion };
   }
 
   /** Bản lưu 7 cấp → 15 cấp: giữ đúng giai đoạn hình ảnh, giữ % tiến độ trong cấp. */
@@ -1104,6 +1262,8 @@ export class Tank {
     if ((data.maxStage ?? 7) === 7 && MAX_STAGE !== 7) this.upgradeLegacyStages();
     this.nextId = Math.max(this.nextId, data.nextId ?? 1);
     this.dirt = data.dirt ?? 0;
+    this.round = data.round ?? 1;
+    this.lastChampion = data.lastChampion ?? null;
     this.dirty = true;
   }
 }

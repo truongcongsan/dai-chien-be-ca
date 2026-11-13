@@ -27,6 +27,10 @@ export interface Rules {
   exhaustedMs: number;
   warnHunger: number;
   crownCooldownMs: number;
+  /** Chỉ cá từ cấp này trở lên mới được làm cá chúa. */
+  crownMinStage: number;
+  /** Cá chúa giữ vương miện liền chừng này thì vô địch → sang màn mới. */
+  championHoldMs: number;
 
   // ---- Thời tiết, ngày đêm, thử thách (plan mục 12) ----
   /** 1 = tự chạy lịch thời tiết và thử thách; 0 = chỉ khi Admin bấm. */
@@ -59,26 +63,32 @@ export interface Rules {
   rewardGrowth: number;
   predatorEveryMin: number;
   predatorWindowMs: number;
-  /** Tim cần để đuổi mèo = số cá × hệ số (tối thiểu predatorMinLikes). */
+  /** Tim cần để đuổi mèo = số cá × hệ số (tối thiểu predatorMinLikes); 0 = luôn predatorMinLikes. */
   predatorLikesPerFish: number;
   predatorMinLikes: number;
-  /** Thua thì tối đa chừng này cá nhỏ (cấp ≤ 3) mất 30% tăng trưởng. */
+  /** Thua thì mèo cào chừng này cá TO NHẤT: có khiên thì mất khiên, không thì −predatorLevelLoss cấp. */
   predatorVictims: number;
+  predatorLevelLoss: number;
 
   // ---- Quà tặng và tấn công (plan mục 5) ----
   /** 1 = quà chưa gán thì quy đổi theo giá kim cương sang phần thưởng gần nhất. */
   giftFallback: number;
-  /** 1 = bật răng nanh / cắn; 0 = răng nanh đổi thành thức ăn ngon. */
+  /** 1 = ai có cá cũng comment "cắn @tên" được; 0 = tắt cắn. */
   attackEnabled: number;
   /** Cá tấn công phải hơn ít nhất chừng này cấp. */
   biteStageGap: number;
+  /** Cá mới nở có khiên (miễn bị cắn) trong khoảng này. */
   newbieImmuneMs: number;
-  /** Một cá chỉ bị cắn tối đa 1 lần trong khoảng này. */
+  /** Cá bị cắn trúng hoặc cắn hụt được tặng khiên trong khoảng này. */
   biteCooldownMs: number;
+  /** Cắn trúng thì cá bị cắn mất chừng này cấp; cá ở cấp ≤ số này thì chết. */
+  biteLevelLoss: number;
+  /** Mỗi cá chỉ được cắn 1 lần trong khoảng này (kể cả cắn trượt). */
+  biteAttackCooldownMs: number;
+  /** % cú cắn bị trượt. */
+  biteMissPct: number;
   /** Cá tấn công được cộng chừng này điểm tăng trưởng. */
   biteGrowth: number;
-  /** Có răng mà không ra lệnh "cắn @tên" thì sau chừng này cá tự cắn. */
-  biteAutoMs: number;
   /** Lần thả trứng sau khi bị cắn chết chỉ cần (100 − %) tim. */
   eggDiscountPct: number;
   shieldMs: number;
@@ -103,6 +113,8 @@ export const DEFAULT_RULES: Rules = {
   exhaustedMs: 30_000,
   warnHunger: 15,
   crownCooldownMs: 60_000,
+  crownMinStage: 15,
+  championHoldMs: 600_000,
 
   autoEvents: 1,
   nightMode: 2,
@@ -119,24 +131,27 @@ export const DEFAULT_RULES: Rules = {
   dirtPerFishPerMin: 0.06,
   dirtyAt: 70,
   cleanWindowMs: 60_000,
-  cleanPerFish: 2.5,
-  cleanMinNeeded: 25,
-  cleanMaxNeeded: 150,
+  cleanPerFish: 0,
+  cleanMinNeeded: 10,
+  cleanMaxNeeded: 10,
   cleanMaxPerUser: 5,
   rewardGrowth: 5,
   predatorEveryMin: 15,
   predatorWindowMs: 30_000,
-  predatorLikesPerFish: 30,
-  predatorMinLikes: 500,
+  predatorLikesPerFish: 0,
+  predatorMinLikes: 200,
   predatorVictims: 3,
+  predatorLevelLoss: 5,
 
   giftFallback: 1,
   attackEnabled: 1,
-  biteStageGap: 4,
+  biteStageGap: 1,
   newbieImmuneMs: 300_000,
-  biteCooldownMs: 600_000,
+  biteCooldownMs: 300_000,
+  biteLevelLoss: 10,
+  biteAttackCooldownMs: 90_000,
+  biteMissPct: 30,
   biteGrowth: 30,
-  biteAutoMs: 30_000,
   eggDiscountPct: 50,
   shieldMs: 600_000,
   potionMs: 300_000,
@@ -161,7 +176,15 @@ export interface AudioSettings {
   voiceVol: number;
   /** Nhạc nhỏ xuống còn chừng này khi MC nói. */
   duck: number;
+  /**
+   * Nơi phát âm thanh (MC, nhạc, hiệu ứng): "stage" = trang Stage (OBS tự phát được);
+   * "admin" = trang Admin mở trong Chrome (TikTok LIVE Studio chặn tự phát tiếng trong nguồn link, nên để Admin phát
+   * và LIVE Studio thu qua âm thanh hệ thống). Chỉ một nơi phát để không bị vang đôi.
+   */
+  output: AudioOutput;
 }
+
+export type AudioOutput = "stage" | "admin";
 
 export const DEFAULT_AUDIO: AudioSettings = {
   mc: true,
@@ -173,22 +196,36 @@ export const DEFAULT_AUDIO: AudioSettings = {
   sfx: 0.8,
   voiceVol: 1,
   duck: 0.3,
+  output: "stage",
 };
 
 // ---------- Quà tặng ----------
 
-export type RewardKey = "food" | "hatch" | "shield" | "potion" | "bite" | "rareEgg" | "foodRain" | "revive" | "legendaryEgg";
+export type RewardKey =
+  | "food"
+  | "hatch"
+  | "shield"
+  | "rareEgg"
+  | "potion"
+  | "killBite"
+  | "revive"
+  | "legendaryEgg"
+  | "megaPotion"
+  | "foodRain"
+  | "doom";
 
 export const REWARDS: Record<RewardKey, { icon: string; name: string; desc: string }> = {
   food: { icon: "🍤", name: "Thức ăn ngon", desc: "+15% đói · +10% lớn" },
   hatch: { icon: "🐣", name: "Nở ngay", desc: "Trứng nở liền" },
   shield: { icon: "🛡️", name: "Khiên", desc: "Chặn 1 cú cắn" },
-  potion: { icon: "🧪", name: "Thuốc lớn", desc: "×2 tăng trưởng 5 phút" },
-  bite: { icon: "🦷", name: "Răng nanh", desc: "Cắn cá nhỏ hơn" },
-  rareEgg: { icon: "💎", name: "Trứng hiếm", desc: "Betta · thần tiên · cá ngựa" },
-  foodRain: { icon: "🍱", name: "Mưa thức ăn", desc: "Cả bể +20% đói" },
+  rareEgg: { icon: "💎", name: "Trứng hiếm", desc: "Cá hiếm · lớn ×1.5" },
+  potion: { icon: "🧪", name: "Tăng 10lv", desc: "Lên thẳng 10 cấp" },
+  killBite: { icon: "🗡️", name: "Cắn chết", desc: "Cú cắn tới: chết luôn, không hụt" },
   revive: { icon: "💖", name: "Hồi sinh", desc: "Cứu cá · bất tử 30 phút" },
-  legendaryEgg: { icon: "🐉", name: "Trứng rồng", desc: "Cá rồng ánh kim" },
+  legendaryEgg: { icon: "🐉", name: "Trứng rồng", desc: "Cá rồng · lớn ×1.8" },
+  megaPotion: { icon: "⚗️", name: "Tăng 35lv", desc: "Lên thẳng 35 cấp" },
+  foodRain: { icon: "🍱", name: "Mưa thức ăn", desc: "Cả bể no + lên 5 cấp" },
+  doom: { icon: "☄️", name: "Hủy diệt", desc: "Diệt cả bể · vô địch ngay" },
 };
 
 export interface GiftMapping {
@@ -199,23 +236,30 @@ export interface GiftMapping {
   coins: number;
   reward: RewardKey;
   enabled: boolean;
+  /** Ảnh quà thật (file trong data/gift-img do engine tải từ TikTok); thiếu thì menu dùng icon phần thưởng. */
+  image?: string | null;
 }
 
 /**
- * Bảng mặc định theo mức giá (plan 5.1). Tên/giá quà TikTok đổi theo khu vực:
- * phải xác minh lại trong Admin với danh sách quà thật của phòng.
+ * Bảng mặc định theo mức giá (plan 5.1). ID/giá đã đối chiếu danh sách quà TikTok (11/2026);
+ * engine tự cập nhật ID, giá và ảnh theo danh sách quà của phòng mỗi lần kết nối.
  */
 export const DEFAULT_GIFTS: GiftMapping[] = [
   { giftId: 5655, giftName: "Rose", coins: 1, reward: "food", enabled: true },
-  { giftId: null, giftName: "Finger Heart", coins: 5, reward: "hatch", enabled: true },
-  { giftId: null, giftName: "Doughnut", coins: 30, reward: "shield", enabled: true },
-  { giftId: null, giftName: "Hand Hearts", coins: 100, reward: "potion", enabled: true },
-  { giftId: null, giftName: "Confetti", coins: 100, reward: "bite", enabled: true },
-  { giftId: null, giftName: "Sunglasses", coins: 199, reward: "rareEgg", enabled: true },
-  { giftId: null, giftName: "Corgi", coins: 299, reward: "foodRain", enabled: true },
-  { giftId: null, giftName: "Money Gun", coins: 500, reward: "revive", enabled: true },
-  { giftId: null, giftName: "Galaxy", coins: 1000, reward: "legendaryEgg", enabled: true },
+  { giftId: 5487, giftName: "Finger Heart", coins: 5, reward: "hatch", enabled: true },
+  { giftId: 5879, giftName: "Doughnut", coins: 30, reward: "shield", enabled: true },
+  // Phòng không có quà 50 xu: dùng Capybara (30 xu) cho Trứng hiếm.
+  { giftId: 14488, giftName: "Capybara", coins: 30, reward: "rareEgg", enabled: true },
+  { giftId: 6097, giftName: "Little Crown", coins: 99, reward: "legendaryEgg", enabled: true },
+  { giftId: 5660, giftName: "Hand Heart", coins: 100, reward: "potion", enabled: true },
+  { giftId: 5585, giftName: "Confetti", coins: 100, reward: "killBite", enabled: true },
+  { giftId: 5582, giftName: "Mishka Bear", coins: 100, reward: "revive", enabled: true },
+  { giftId: 6267, giftName: "Corgi", coins: 299, reward: "megaPotion", enabled: true },
+  { giftId: 11046, giftName: "Galaxy", coins: 1000, reward: "doom", enabled: true },
 ];
+
+/** Tăng khi đổi bảng quà mặc định mà bản lưu cũ cần nhận bảng mới (2 = Đại Chiến Bể Cá). */
+export const GIFTS_VERSION = 2;
 
 /** Tìm phần thưởng cho một món quà: theo ID, rồi theo tên, rồi (nếu bật) theo giá. */
 export function matchGift(gifts: GiftMapping[], giftId: number | null, giftName: string, diamonds: number | null, fallback: boolean) {
@@ -244,29 +288,79 @@ export const WEATHER_INFO: Record<WeatherKind, { icon: string; name: string }> =
 /** Giai đoạn hình ảnh: mỗi cấp dùng ảnh của giai đoạn nào (mỗi loài có 1 ảnh cho mỗi giai đoạn). */
 export type ArtPhase = "egg" | "fry" | "juvenile" | "teen" | "adult" | "king";
 
+export interface StageInfo {
+  name: string;
+  /** Chiều dài cá trên Stage 1080px. */
+  size: number;
+  /** Điểm để lên cấp kế (3 tim = 1 điểm); 0 ở cấp cuối. */
+  growthNeed: number;
+  art: ArtPhase;
+  /** Lên tới cấp này thì thông báo to + nhạc fanfare. */
+  announce: boolean;
+}
+
+/** Cấp có hình thái cuối cùng (ảnh trưởng thành / cá chúa của cá rồng); từ đây cá vẫn lên cấp nhưng không đổi hình. */
+export const FORM_STAGE = 15;
+
 /**
- * Cấp 0 là trứng (đang nạp tim, chưa vào bể); cá trong bể từ cấp 1 đến MAX_STAGE (15).
- * size = chiều dài cá trên Stage 1080px; growthNeed = điểm để lên cấp kế (3 tim = 1 điểm);
- * announce = lên tới cấp này thì thông báo to + nhạc fanfare.
+ * Cấp 0..15: lớn dần và đổi hình qua 4 giai đoạn. Lv1–10 rất rẻ (Lv1→10 ≈ 680 tim) để người mới thấy cá lớn nhanh;
+ * Lv10–15 tăng dần cho mượt tới mức 240 điểm/cấp của Lv15.
  */
-export const STAGES = [
+const FORM_STAGES: StageInfo[] = [
   { name: "Trứng", size: 40, growthNeed: 0, art: "egg", announce: false },
-  { name: "Cá bột", size: 58, growthNeed: 100, art: "fry", announce: false },
-  { name: "Cá bột lớn", size: 66, growthNeed: 100, art: "fry", announce: false },
-  { name: "Cá con", size: 76, growthNeed: 110, art: "juvenile", announce: false },
-  { name: "Cá con lanh lợi", size: 86, growthNeed: 110, art: "juvenile", announce: false },
-  { name: "Cá nhỡ", size: 97, growthNeed: 120, art: "juvenile", announce: true },
-  { name: "Cá nhỡ khỏe", size: 108, growthNeed: 120, art: "juvenile", announce: false },
-  { name: "Thiếu niên", size: 120, growthNeed: 130, art: "teen", announce: true },
-  { name: "Thiếu niên dũng mãnh", size: 132, growthNeed: 140, art: "teen", announce: false },
-  { name: "Thiếu niên tinh anh", size: 145, growthNeed: 150, art: "teen", announce: false },
-  { name: "Trưởng thành", size: 158, growthNeed: 160, art: "teen", announce: true },
-  { name: "Cá lớn", size: 172, growthNeed: 170, art: "adult", announce: true },
-  { name: "Cá khổng lồ", size: 186, growthNeed: 180, art: "adult", announce: true },
-  { name: "Cá thần", size: 200, growthNeed: 200, art: "adult", announce: true },
-  { name: "Cá huyền thoại", size: 214, growthNeed: 220, art: "adult", announce: true },
-  { name: "Cá chúa", size: 232, growthNeed: 0, art: "king", announce: true },
-] as const satisfies readonly { name: string; size: number; growthNeed: number; art: ArtPhase; announce: boolean }[];
+  { name: "Cá bột", size: 58, growthNeed: 10, art: "fry", announce: false },
+  { name: "Cá bột lớn", size: 66, growthNeed: 12, art: "fry", announce: false },
+  { name: "Cá con", size: 76, growthNeed: 15, art: "juvenile", announce: false },
+  { name: "Cá con lanh lợi", size: 86, growthNeed: 18, art: "juvenile", announce: false },
+  { name: "Cá nhỡ", size: 97, growthNeed: 22, art: "juvenile", announce: true },
+  { name: "Cá nhỡ khỏe", size: 108, growthNeed: 27, art: "juvenile", announce: false },
+  { name: "Thiếu niên", size: 120, growthNeed: 33, art: "teen", announce: true },
+  { name: "Thiếu niên dũng mãnh", size: 132, growthNeed: 40, art: "teen", announce: false },
+  { name: "Thiếu niên tinh anh", size: 145, growthNeed: 50, art: "teen", announce: false },
+  { name: "Trưởng thành", size: 158, growthNeed: 65, art: "teen", announce: true },
+  { name: "Cá lớn", size: 172, growthNeed: 95, art: "adult", announce: true },
+  { name: "Cá khổng lồ", size: 186, growthNeed: 125, art: "adult", announce: true },
+  { name: "Cá thần", size: 200, growthNeed: 160, art: "adult", announce: true },
+  { name: "Cá huyền thoại", size: 214, growthNeed: 200, art: "adult", announce: true },
+];
+
+/** Tên bậc từ Lv15 trở lên (hình thái cuối). "Cá chúa" không phải cấp mà là danh hiệu của con cấp cao nhất bể. */
+const HIGH_TITLES: [from: number, name: string][] = [
+  [15, "Cá vương giả"],
+  [30, "Cá bá chủ"],
+  [50, "Cá thần thoại"],
+  [75, "Cá bất tử"],
+  [100, "Cá tối thượng"],
+];
+
+/** Kích thước từ Lv15: giữ hình, to vọt ở từng mốc (px chiều dài trên Stage 1080px). */
+const HIGH_SIZES: [from: number, size: number][] = [
+  [15, 232],
+  [20, 275],
+  [30, 320],
+  [50, 370],
+  [100, 440],
+];
+
+/**
+ * Cấp 0 là trứng (đang nạp tim, chưa vào bể); cá trong bể từ cấp 1 đến MAX_STAGE (100).
+ * Lv1–15 đổi hình và to nhanh; Lv15–100 giữ hình thái cuối, chỉ to vọt ở các mốc Lv20/30/50/100 (HIGH_SIZES),
+ * mỗi cấp cần 240 điểm + 5 điểm mỗi cấp trên 15; thông báo to mỗi 5 cấp.
+ */
+export const STAGES: readonly StageInfo[] = [
+  ...FORM_STAGES,
+  ...Array.from({ length: 100 - FORM_STAGE + 1 }, (_, i): StageInfo => {
+    const stage = FORM_STAGE + i;
+    const name = HIGH_TITLES.filter(([from]) => stage >= from).pop()![1];
+    return {
+      name,
+      size: HIGH_SIZES.filter(([from]) => stage >= from).pop()![1],
+      growthNeed: stage === 100 ? 0 : 240 + (stage - FORM_STAGE) * 5,
+      art: "king",
+      announce: stage === FORM_STAGE || stage % 5 === 0,
+    };
+  }),
+];
 export const MAX_STAGE = STAGES.length - 1;
 
 /** Cá "nhỏ" (tới hết giai đoạn cá con): mèo khều được, bơi sát đáy khi có nguy hiểm. */
@@ -276,17 +370,18 @@ export const NAME_STAGE = 8;
 /** Trứng hiếm/trứng rồng nở thẳng lên cấp này (đủ lớn để thấy ngay dáng loài). */
 export const GIFT_HATCH_STAGE = 3;
 
-/** "Lv7 · Thiếu niên" */
-export const stageLabel = (stage: number) => (stage <= 0 ? STAGES[0].name : `Lv${stage} · ${STAGES[stage]?.name ?? ""}`);
+/** "Lv7 · Thiếu niên"; con đội vương miện (cấp cao nhất bể) hiện "Cá chúa". */
+export const stageLabel = (stage: number, crowned = false) =>
+  stage <= 0 ? STAGES[0].name : `Lv${stage} · ${crowned ? "Cá chúa" : (STAGES[stage]?.name ?? "")}`;
 
 /**
  * Đổi cấp của bản lưu cũ (7 cấp) sang 15 cấp, giữ đúng giai đoạn hình ảnh:
- * bột→1, con→3, nhỡ→5, thiếu niên→7, trưởng thành→10, cá lớn→12, cá chúa→15.
+ * bột→1, con→3, nhỡ→5, thiếu niên→7, trưởng thành→10, cá lớn→12, cá chúa cũ→15 (hình thái cuối).
  */
 export const LEGACY_STAGE_MAP = [0, 1, 3, 5, 7, 10, 12, 15] as const;
 
 export type Tier = "common" | "rare" | "epic" | "legendary";
-export type SpeciesId = "goldfish" | "guppy" | "puffer" | "neon" | "betta" | "angelfish" | "seahorse" | "dragonfish";
+export type SpeciesId = "goldfish" | "guppy" | "puffer" | "neon" | "clownfish" | "butterfly" | "betta" | "angelfish" | "seahorse" | "dragonfish";
 
 export interface Species {
   id: SpeciesId;
@@ -345,6 +440,24 @@ export const SPECIES: Record<SpeciesId, Species> = {
     variants: [0xffffff, 0xeef6ff],
     labelTop: 0.22,
   },
+  clownfish: {
+    id: "clownfish",
+    name: "Cá hề",
+    tier: "common",
+    textures: artLadder("fish-egg-common", "clownfish"),
+    fryTint: 0xffc49a,
+    variants: [0xffffff, 0xfff0d8, 0xffe0e8],
+    labelTop: 0.31,
+  },
+  butterfly: {
+    id: "butterfly",
+    name: "Cá bướm vàng",
+    tier: "common",
+    textures: artLadder("fish-egg-common", "butterfly"),
+    fryTint: 0xfff2a0,
+    variants: [0xffffff, 0xfff6d8, 0xe8f6ff],
+    labelTop: 0.42,
+  },
   betta: {
     id: "betta",
     name: "Cá betta đuôi lụa",
@@ -400,11 +513,20 @@ export function randomRareSpecies(except?: SpeciesId): SpeciesId {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+/** Màu tên + Lv theo bậc cá: thường xám, hiếm xanh, rồng cam. */
 export const TIER_COLORS: Record<Tier, string> = {
-  common: "#ffffff",
-  rare: "#7fd4ff",
-  epic: "#d59bff",
-  legendary: "#ffd54a",
+  common: "#d3d9df",
+  rare: "#4da8ff",
+  epic: "#c58bff",
+  legendary: "#ff9a2e",
+};
+
+/** Hệ số tăng trưởng theo bậc: cá hiếm lớn ×1.5, cá rồng ×1.8. */
+export const TIER_GROWTH: Record<Tier, number> = {
+  common: 1,
+  rare: 1.5,
+  epic: 1.65,
+  legendary: 1.8,
 };
 
 export const FISH_TEXTURES = [...new Set(Object.values(SPECIES).flatMap((s) => s.textures))];

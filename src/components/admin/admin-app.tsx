@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { EngineClient, useEngine } from "@/client/engine-client";
+import { EngineClient, giftImageUrl, useEngine } from "@/client/engine-client";
 import { CANVAS_H, CANVAS_W } from "@/client/stage-size";
-import { COMMON_SPECIES, DEFAULT_RULES, MAX_STAGE, RARE_SPECIES, REWARDS, SPECIES, STAGES, WEATHER_INFO, stageLabel, type GiftMapping, type RewardKey, type Rules } from "@/shared/config";
+import { COMMON_SPECIES, DEFAULT_RULES, FORM_STAGE, MAX_STAGE, RARE_SPECIES, REWARDS, SPECIES, STAGES, WEATHER_INFO, stageLabel, type GiftMapping, type RewardKey, type Rules } from "@/shared/config";
 import type { AdminState } from "@/shared/protocol";
 import { StageFrame } from "../stage/stage-view";
 
@@ -38,7 +38,7 @@ const RULE_LABELS: Record<keyof Rules, string> = {
   dirtPerFishPerMin: "Bẩn mỗi cá / phút (%)",
   dirtyAt: "Nước đục từ (%)",
   cleanWindowMs: "Thời gian dọn bể (ms)",
-  cleanPerFish: "Lượt “dọn” cần / mỗi cá",
+  cleanPerFish: "Lượt “dọn” cần / mỗi cá (0 = cố định)",
   cleanMinNeeded: "Lượt “dọn” cần tối thiểu",
   cleanMaxNeeded: "Lượt “dọn” cần tối đa",
   cleanMaxPerUser: "Lượt “dọn” tối đa / người",
@@ -49,12 +49,17 @@ const RULE_LABELS: Record<keyof Rules, string> = {
   predatorMinLikes: "Tim đuổi mèo tối thiểu",
   predatorVictims: "Số cá nhỏ bị khều khi thua",
   giftFallback: "Quà chưa gán quy đổi theo giá (1/0)",
-  attackEnabled: "Bật răng nanh / cắn (1/0)",
+  attackEnabled: "Cho phép “cắn @tên” (1/0)",
   biteStageGap: "Cắn được khi hơn ít nhất (cấp)",
-  newbieImmuneMs: "Cá mới nở miễn cắn (ms)",
-  biteCooldownMs: "Một cá bị cắn tối đa 1 lần / (ms)",
+  newbieImmuneMs: "Khiên cá mới nở (ms)",
+  biteCooldownMs: "Khiên sau khi bị cắn trúng/hụt (ms)",
+  biteAttackCooldownMs: "Mỗi cá cắn 1 lần / (ms)",
+  biteMissPct: "Tỷ lệ cắn trượt (%)",
+  biteLevelLoss: "Cắn trúng trừ (cấp); cấp ≤ số này thì chết",
+  crownMinStage: "Cá chúa phải từ cấp",
+  championHoldMs: "Giữ ngôi cá chúa để vô địch (ms)",
+  predatorLevelLoss: "Mèo cào trừ (cấp)",
   biteGrowth: "Cắn thành công +tăng trưởng",
-  biteAutoMs: "Tự cắn sau (ms) nếu không ra lệnh",
   eggDiscountPct: "Bị cắn chết: giảm tim lần sau (%)",
   shieldMs: "Khiên hiệu lực (ms)",
   potionMs: "Thuốc lớn nhanh hiệu lực (ms)",
@@ -124,13 +129,43 @@ function AudioPanel({ admin, run }: { admin: AdminState; run: (cmd: string, args
           ))}
         </ul>
       )}
-      <p className="hint">Chỉ trang Stage (OBS) phát tiếng; bản preview ở đây luôn tắt tiếng.</p>
+      <label>
+        Phát âm thanh ở
+        <select value={a.output} onChange={(e) => run("setAudio", { output: e.target.value })}>
+          <option value="stage">Trang Stage (OBS)</option>
+          <option value="admin">Trang Admin này (TikTok LIVE Studio)</option>
+        </select>
+      </label>
+      <p className="hint">
+        {a.output === "admin"
+          ? "Trang Admin này phát MC, nhạc và hiệu ứng (bấm vào trang một lần để bật tiếng); TikTok LIVE Studio thu qua âm thanh hệ thống. Stage im lặng. Chỉ mở một tab Admin để không bị vang đôi."
+          : "Trang Stage phát tiếng (OBS tự phát được); bản preview ở đây tắt tiếng. Dùng TikTok LIVE Studio thì chọn “Trang Admin này”, vì LIVE Studio chặn tự phát tiếng trong nguồn link."}
+      </p>
     </div>
   );
 }
 
+/** Đặc quyền Admin: gõ cấp bất kỳ (1–MAX_STAGE) cho cá của người chơi. */
+function LevelSetter({ stage, onSet }: { stage: number; onSet: (stage: number) => void }) {
+  const [value, setValue] = useState("");
+  const submit = () => {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 1) return;
+    onSet(Math.min(MAX_STAGE, Math.round(n)));
+    setValue("");
+  };
+  return (
+    <span className="level-setter">
+      <input className="narrow" type="number" min={1} max={MAX_STAGE} placeholder={`Lv${stage}`} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+      <button title="Đặt cấp cho cá này" onClick={submit} disabled={!value}>
+        Đặt
+      </button>
+    </span>
+  );
+}
+
 /** Bảng quà → phần thưởng. Sửa tại chỗ, bấm Lưu mới gửi lên engine. */
-function GiftEditor({ gifts, unmapped, run }: { gifts: GiftMapping[]; unmapped: { giftId: number | null; giftName: string; diamonds: number | null; count: number }[]; run: (cmd: string, args?: Record<string, unknown>) => Promise<void> }) {
+function GiftEditor({ gifts, unmapped, run }: { gifts: GiftMapping[]; unmapped: { giftId: number | null; giftName: string; diamonds: number | null; count: number; image?: string | null }[]; run: (cmd: string, args?: Record<string, unknown>) => Promise<void> }) {
   const [rows, setRows] = useState<GiftMapping[] | null>(null);
   const list = rows ?? gifts;
   const edit = (i: number, patch: Partial<GiftMapping>) => setRows(list.map((g, j) => (j === i ? { ...g, ...patch } : g)));
@@ -144,6 +179,7 @@ function GiftEditor({ gifts, unmapped, run }: { gifts: GiftMapping[]; unmapped: 
         <thead>
           <tr>
             <th>Bật</th>
+            <th>Ảnh</th>
             <th>Tên quà TikTok</th>
             <th>ID</th>
             <th>Giá</th>
@@ -157,6 +193,7 @@ function GiftEditor({ gifts, unmapped, run }: { gifts: GiftMapping[]; unmapped: 
               <td>
                 <input type="checkbox" checked={g.enabled} onChange={(e) => edit(i, { enabled: e.target.checked })} />
               </td>
+              <td className="gift-thumb">{g.image ? <img src={giftImageUrl(g.image)} alt="" /> : <span title="Chưa có ảnh: bấm Tải ảnh quà từ TikTok">{REWARDS[g.reward].icon}</span>}</td>
               <td>
                 <input value={g.giftName} onChange={(e) => edit(i, { giftName: e.target.value })} />
               </td>
@@ -201,6 +238,9 @@ function GiftEditor({ gifts, unmapped, run }: { gifts: GiftMapping[]; unmapped: 
           </>
         )}
         <button onClick={() => confirm("Trả bảng quà về mặc định?") && run("resetGifts")}>Về mặc định</button>
+        <button title="Lấy danh sách quà của phòng đang LIVE: điền ID, giá thật và ảnh quà" onClick={() => run("refreshGiftCatalog")}>
+          🖼️ Tải ảnh quà từ TikTok
+        </button>
       </div>
       {unmapped.length > 0 && (
         <>
@@ -208,14 +248,14 @@ function GiftEditor({ gifts, unmapped, run }: { gifts: GiftMapping[]; unmapped: 
           <ul className="unmapped">
             {unmapped.map((u) => (
               <li key={`${u.giftId}-${u.giftName}`}>
-                {u.giftName || "?"} {u.giftId !== null && <code>#{u.giftId}</code>} · 🪙{u.diamonds ?? "?"} · ×{u.count}
+                {u.image && <img className="gift-thumb-inline" src={giftImageUrl(u.image)} alt="" />} {u.giftName || "?"} {u.giftId !== null && <code>#{u.giftId}</code>} · 🪙{u.diamonds ?? "?"} · ×{u.count}
                 <button onClick={() => setRows([...list, { giftId: u.giftId, giftName: u.giftName, coins: u.diamonds ?? 1, reward: "food", enabled: true }])}>Gán</button>
               </li>
             ))}
           </ul>
         </>
       )}
-      <p className="hint">Tên, ID và giá quà TikTok khác nhau theo khu vực — hãy đối chiếu với danh sách quà thật của phòng.</p>
+      <p className="hint">Khi kết nối LIVE, engine tự lấy danh sách quà của phòng: điền ID, giá thật và ảnh quà theo tên quà. Gõ đúng tên quà TikTok (tiếng Anh, vd. “Hand Heart”) rồi Lưu là có ảnh.</p>
     </div>
   );
 }
@@ -316,7 +356,7 @@ export function AdminApp() {
             </button>
           ))}
           <button onClick={() => run("spawn", { species: "dragonfish" })}>Nở cá rồng</button>
-          <button onClick={() => run("spawn", { species: "dragonfish", stage: MAX_STAGE })}>Cá rồng chúa</button>
+          <button onClick={() => run("spawn", { species: "dragonfish", stage: FORM_STAGE })}>Cá rồng Lv{FORM_STAGE}</button>
         </div>
         <div className="row">
           <button onClick={() => run("starveAll", { to: 12 })}>Cả bể đói còn 12%</button>
@@ -351,7 +391,7 @@ export function AdminApp() {
           Mở Stage cho OBS ↗
         </a>
         <div style={{ width: CANVAS_W * previewScale, height: CANVAS_H * previewScale }}>
-          <StageFrame client={client} scale={previewScale} muted />
+          <StageFrame client={client} scale={previewScale} role="admin" />
         </div>
       </section>
 
@@ -367,6 +407,9 @@ export function AdminApp() {
                 <td>{SPECIES[f.species].name}</td>
                 <td>
                   {stageLabel(f.stage)} · {f.growth}%
+                </td>
+                <td>
+                  <LevelSetter stage={f.stage} onSet={(stage) => run("setFishLevel", { id: f.id, stage })} />
                 </td>
                 <td>🍤 {f.hunger}%</td>
                 <td className="actions">

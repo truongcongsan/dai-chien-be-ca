@@ -766,6 +766,117 @@ function seahorse(stage) {
   </g>`;
 }
 
+// ---------- cá hề (thường) ----------
+const CLOWN_STAGES = {
+  juvenile: { bands: 2, edge: 3, light: "#FFC07A", mid: "#FF9440", dark: "#E8692A", eyeR: 50, fin: 0.75 },
+  teen: { bands: 3, edge: 5, light: "#FFB066", mid: "#FF8226", dark: "#DD5A14", eyeR: 46, fin: 0.9 },
+  adult: { bands: 3, edge: 8, light: "#FFA552", mid: "#FF7414", dark: "#D24C0A", eyeR: 42, fin: 1 },
+};
+
+function clownfish(stage) {
+  const s = CLOWN_STAGES[stage];
+  const F = s.fin;
+  const T = 430; // gốc đuôi
+  // sọc trắng cong (đầu, giữa, gốc đuôi), viền đen dày dần theo tuổi
+  const bandXs = [745, 600, 470].slice(0, s.bands);
+  const bands = bandXs
+    .map((x, i) => {
+      const w = i === 1 ? 46 : 38;
+      const d = `M${x} 360 C${x - 26} 440 ${x - 26} 570 ${x} 650`;
+      return `<path d="${d}" stroke="#2B1A14" stroke-width="${w + s.edge * 2}" fill="none" opacity="0.92"/>
+        <path d="${d}" stroke="url(#band)" stroke-width="${w}" fill="none"/>`;
+    })
+    .join("");
+  const finEdge = `stroke="#2B1A14" stroke-width="${Math.max(2, s.edge - 1)}" stroke-linejoin="round"`;
+  return `
+  <defs>
+    <radialGradient id="body" cx="0.6" cy="0.32" r="0.85">
+      <stop offset="0" stop-color="${s.light}"/><stop offset="0.55" stop-color="${s.mid}"/><stop offset="1" stop-color="${s.dark}"/>
+    </radialGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EAF2F8"/>
+    </linearGradient>
+    <linearGradient id="fin" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="${s.mid}"/><stop offset="1" stop-color="${s.light}"/>
+    </linearGradient>
+    <clipPath id="bodyClip"><path id="bodyPath" d="M860 505 C860 428 798 388 708 386 C610 384 510 426 ${T} 466 C${T - 14} 476 ${T - 14} 534 ${T} 544 C510 584 610 626 708 624 C798 622 860 582 860 505 Z"/></clipPath>
+  </defs>
+  <g id="art">
+    <!-- đuôi tròn viền đen -->
+    <path d="M${T + 12} 478 C${T - 50} ${505 - 95 * F} ${T - 120 * F} ${505 - 110 * F} ${T - 140 * F} ${505 - 70 * F} C${T - 160 * F} 470 ${T - 160 * F} 540 ${T - 140 * F} ${505 + 70 * F} C${T - 120 * F} ${505 + 110 * F} ${T - 50} ${505 + 95 * F} ${T + 12} 532 Z" fill="url(#fin)" ${finEdge}/>
+    ${rays(T, 505, [[T - 130 * F, 505 - 60 * F], [T - 145 * F, 505], [T - 130 * F, 505 + 60 * F]], s.dark, 4, 0.35)}
+    <!-- vây lưng hai thùy -->
+    <path d="M700 392 C690 ${392 - 70 * F} 640 ${392 - 85 * F} 610 ${392 - 60 * F} C600 ${392 - 30 * F} 590 ${400 - 20 * F} 585 405 C560 ${405 - 75 * F} 500 ${405 - 80 * F} 470 ${440 - 50 * F} C470 450 480 455 ${T + 20} 470 Z" fill="url(#fin)" ${finEdge}/>
+    <!-- vây hậu môn + vây bụng tròn -->
+    <path d="M600 612 C590 ${612 + 70 * F} 540 ${612 + 85 * F} 505 ${612 + 55 * F} C490 ${600 + 30 * F} 470 560 ${T + 20} 540 Z" fill="url(#fin)" ${finEdge}/>
+    <path d="M720 610 C715 ${610 + 60 * F} 690 ${610 + 85 * F} 660 ${610 + 80 * F} C655 ${610 + 50 * F} 665 625 680 615 Z" fill="url(#fin)" ${finEdge}/>
+    <use href="#bodyPath" fill="url(#body)"/>
+    <g clip-path="url(#bodyClip)">
+      ${bands}
+      <ellipse cx="660" cy="640" rx="260" ry="60" fill="${s.dark}" opacity="0.35" filter="url(#soft16)"/>
+    </g>
+    <use href="#bodyPath" fill="none" stroke="#2B1A14" stroke-width="${Math.max(2, s.edge - 2)}" opacity="0.55"/>
+    <!-- vây ngực -->
+    <path d="M740 545 C705 555 682 585 686 612 C720 610 745 585 752 556 Z" fill="url(#fin)" ${finEdge}/>
+    <path d="M560 420 C640 398 730 396 800 420" stroke="#fff" stroke-width="18" fill="none" stroke-linecap="round" opacity="0.6" filter="url(#soft4)"/>
+    ${eye(800, 478, s.eyeR)}
+    <ellipse cx="822" cy="548" rx="22" ry="12" fill="#FF6F91" opacity="0.5" filter="url(#soft4)"/>
+    <path d="M846 520 Q856 530 865 518" stroke="#6A2A10" stroke-width="6" fill="none" stroke-linecap="round"/>
+  </g>`;
+}
+
+// ---------- cá bướm vàng (thường) ----------
+const BUTTERFLY_STAGES = {
+  juvenile: { yellow: ["#FFF3B0", "#FFE069", "#F2C232"], spot: 1, lines: 0, eyeR: 48, fin: 0.8 },
+  teen: { yellow: ["#FFEE8C", "#FFD43B", "#EDB21A"], spot: 0.6, lines: 0.5, eyeR: 44, fin: 0.9 },
+  adult: { yellow: ["#FFE873", "#FFCA1F", "#E39E0C"], spot: 0, lines: 1, eyeR: 40, fin: 1 },
+};
+
+function butterflyfish(stage) {
+  const s = BUTTERFLY_STAGES[stage];
+  const F = s.fin;
+  const lines = s.lines
+    ? [0, 1, 2, 3, 4, 5]
+        .map((i) => `<path d="M${470 + i * 55} ${330 + i * 10} L${400 + i * 55} ${690 - i * 6}" stroke="#E07A10" stroke-width="7" opacity="${0.35 * s.lines}" stroke-linecap="round"/>`)
+        .join("")
+    : "";
+  return `
+  <defs>
+    <radialGradient id="body" cx="0.55" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="${s.yellow[0]}"/><stop offset="0.55" stop-color="${s.yellow[1]}"/><stop offset="1" stop-color="${s.yellow[2]}"/>
+    </radialGradient>
+    <linearGradient id="fin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${s.yellow[1]}"/><stop offset="1" stop-color="${s.yellow[0]}" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="face" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bodyClip"><path id="bodyPath" d="M790 470 C770 360 680 300 580 302 C470 305 405 390 400 505 C405 620 470 705 580 708 C680 710 770 650 790 545 C820 535 850 522 872 512 C878 508 878 500 872 496 C850 486 820 476 790 470 Z"/></clipPath>
+  </defs>
+  <g id="art">
+    <!-- đuôi nhỏ -->
+    <path d="M410 470 C370 ${505 - 70 * F} ${330 - 20 * F} ${505 - 85 * F} ${310 - 25 * F} ${505 - 70 * F} C${325 - 20 * F} 480 ${325 - 20 * F} 530 ${310 - 25 * F} ${505 + 70 * F} C${330 - 20 * F} ${505 + 85 * F} 370 ${505 + 70 * F} 410 540 Z" fill="url(#fin)" stroke="${s.yellow[2]}" stroke-width="3"/>
+    <!-- vây lưng + vây hậu môn ôm theo thân, viền tối mảnh -->
+    <path d="M700 330 C640 ${290 - 40 * F} 520 ${280 - 45 * F} 440 ${330 - 30 * F} C410 ${360 - 10 * F} 400 400 405 440 C450 380 520 330 600 318 C640 312 680 318 700 330 Z" fill="url(#fin)" stroke="#2B2B33" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M700 680 C640 ${720 + 40 * F} 520 ${730 + 45 * F} 440 ${680 + 30 * F} C410 ${650 + 10 * F} 400 610 405 570 C450 630 520 680 600 692 C640 698 680 692 700 680 Z" fill="url(#fin)" stroke="#2B2B33" stroke-width="5" stroke-linejoin="round"/>
+    <use href="#bodyPath" fill="url(#body)"/>
+    <g clip-path="url(#bodyClip)">
+      ${lines}
+      <rect x="690" y="290" width="200" height="440" fill="url(#face)"/>
+      <!-- sọc đen qua mắt -->
+      <path d="M770 300 C745 400 745 610 770 720" stroke="#2B2B33" stroke-width="44" fill="none"/>
+      <ellipse cx="590" cy="700" rx="230" ry="60" fill="${s.yellow[2]}" opacity="0.4" filter="url(#soft16)"/>
+    </g>
+    ${s.spot ? `<circle cx="470" cy="520" r="${30 * s.spot + 6}" fill="#FFF8E0" opacity="${s.spot}"/><circle cx="470" cy="520" r="${22 * s.spot + 4}" fill="#2B2B33" opacity="${s.spot}"/>` : ""}
+    <!-- vây ngực trong -->
+    <path d="M700 545 C670 560 655 590 660 615 C690 610 712 585 716 556 Z" fill="url(#fin)" opacity="0.9"/>
+    <path d="M520 340 C600 318 680 322 740 350" stroke="#fff" stroke-width="18" fill="none" stroke-linecap="round" opacity="0.6" filter="url(#soft4)"/>
+    <circle cx="768" cy="470" r="${s.eyeR * 1.2}" fill="#2B2B33"/>
+    ${eye(768, 470, s.eyeR)}
+    <ellipse cx="800" cy="540" rx="20" ry="11" fill="#FF8FAB" opacity="0.5" filter="url(#soft4)"/>
+  </g>`;
+}
+
 // ---------- danh sách asset ----------
 const ASSETS = {
   "fish-egg-common": () => egg("common"),
@@ -788,6 +899,12 @@ const ASSETS = {
   "neon-juvenile": () => neon("juvenile"),
   "neon-teen": () => neon("teen"),
   "neon-adult": () => neon("adult"),
+  "clownfish-juvenile": () => clownfish("juvenile"),
+  "clownfish-teen": () => clownfish("teen"),
+  "clownfish-adult": () => clownfish("adult"),
+  "butterfly-juvenile": () => butterflyfish("juvenile"),
+  "butterfly-teen": () => butterflyfish("teen"),
+  "butterfly-adult": () => butterflyfish("adult"),
   "betta-juvenile": () => betta("juvenile"),
   "betta-teen": () => betta("teen"),
   "betta-adult": () => betta("adult"),

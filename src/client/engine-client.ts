@@ -11,6 +11,9 @@ export function engineBase() {
   return { ws: `ws://${host}:${port}/ws`, http: `http://${host}:${port}` };
 }
 
+/** Ảnh quà TikTok mà engine đã tải về máy. */
+export const giftImageUrl = (file: string) => `${engineBase().http}/gift-img/${file}`;
+
 /**
  * One socket to the engine. The Stage joins read-only; the Admin may also send commands.
  * Reconnects by itself and always starts from a fresh snapshot, so a refresh never resets the game.

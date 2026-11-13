@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+  <radialGradient id="iris" cx="0.45" cy="0.4" r="0.65">
+    <stop offset="0" stop-color="#4A2C1E"/><stop offset="0.7" stop-color="#1E110B"/><stop offset="1" stop-color="#0E0805"/>
+  </radialGradient>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+  <filter id="soft4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+  <filter id="soft16" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter></defs>
+  <defs>
+    <radialGradient id="body" cx="0.6" cy="0.32" r="0.85">
+      <stop offset="0" stop-color="#FFC07A"/><stop offset="0.55" stop-color="#FF9440"/><stop offset="1" stop-color="#E8692A"/>
+    </radialGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EAF2F8"/>
+    </linearGradient>
+    <linearGradient id="fin" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#FF9440"/><stop offset="1" stop-color="#FFC07A"/>
+    </linearGradient>
+    <clipPath id="bodyClip"><path id="bodyPath" d="M860 505 C860 428 798 388 708 386 C610 384 510 426 430 466 C416 476 416 534 430 544 C510 584 610 626 708 624 C798 622 860 582 860 505 Z"/></clipPath>
+  </defs>
+  <g id="art">
+    <!-- đuôi tròn viền đen -->
+    <path d="M442 478 C380 433.75 340 422.5 325 452.5 C310 470 310 540 325 557.5 C340 587.5 380 576.25 442 532 Z" fill="url(#fin)" stroke="#2B1A14" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M430 505 Q376.375 484.75 332.5 460" stroke="#E8692A" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M430 505 Q370.1875 505 321.25 505" stroke="#E8692A" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/><path d="M430 505 Q376.375 525.25 332.5 550" stroke="#E8692A" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.35"/>
+    <!-- vây lưng hai thùy -->
+    <path d="M700 392 C690 339.5 640 328.25 610 347 C600 369.5 590 385 585 405 C560 348.75 500 345 470 402.5 C470 450 480 455 450 470 Z" fill="url(#fin)" stroke="#2B1A14" stroke-width="2" stroke-linejoin="round"/>
+    <!-- vây hậu môn + vây bụng tròn -->
+    <path d="M600 612 C590 664.5 540 675.75 505 653.25 C490 622.5 470 560 450 540 Z" fill="url(#fin)" stroke="#2B1A14" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M720 610 C715 655 690 673.75 660 670 C655 647.5 665 625 680 615 Z" fill="url(#fin)" stroke="#2B1A14" stroke-width="2" stroke-linejoin="round"/>
+    <use href="#bodyPath" fill="url(#body)"/>
+    <g clip-path="url(#bodyClip)">
+      <path d="M745 360 C719 440 719 570 745 650" stroke="#2B1A14" stroke-width="44" fill="none" opacity="0.92"/>
+        <path d="M745 360 C719 440 719 570 745 650" stroke="url(#band)" stroke-width="38" fill="none"/><path d="M600 360 C574 440 574 570 600 650" stroke="#2B1A14" stroke-width="52" fill="none" opacity="0.92"/>
+        <path d="M600 360 C574 440 574 570 600 650" stroke="url(#band)" stroke-width="46" fill="none"/>
+      <ellipse cx="660" cy="640" rx="260" ry="60" fill="#E8692A" opacity="0.35" filter="url(#soft16)"/>
+    </g>
+    <use href="#bodyPath" fill="none" stroke="#2B1A14" stroke-width="2" opacity="0.55"/>
+    <!-- vây ngực -->
+    <path d="M740 545 C705 555 682 585 686 612 C720 610 745 585 752 556 Z" fill="url(#fin)" stroke="#2B1A14" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M560 420 C640 398 730 396 800 420" stroke="#fff" stroke-width="18" fill="none" stroke-linecap="round" opacity="0.6" filter="url(#soft4)"/>
+    
+  <circle cx="800" cy="478" r="56.00000000000001" fill="#FFF6EC" opacity="0.55"/>
+  <circle cx="800" cy="478" r="50" fill="url(#iris)"/>
+  <ellipse cx="815" cy="460.5" rx="18" ry="16" fill="#fff"/>
+  <circle cx="781" cy="499" r="7.5" fill="#fff" opacity="0.9"/>
+    <ellipse cx="822" cy="548" rx="22" ry="12" fill="#FF6F91" opacity="0.5" filter="url(#soft4)"/>
+    <path d="M846 520 Q856 530 865 518" stroke="#6A2A10" stroke-width="6" fill="none" stroke-linecap="round"/>
+  </g></svg>

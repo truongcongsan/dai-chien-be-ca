@@ -157,7 +157,7 @@ input {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  max-width: 150px;
+  max-width: 270px;
 }
 
 .hud-top em {
@@ -172,7 +172,7 @@ input {
 
 .hud-banners {
   position: absolute;
-  top: 760px;
+  top: 900px;
   left: 40px;
   right: 250px;
   display: flex;
@@ -250,9 +250,9 @@ input {
 
 .hud-challenge {
   position: absolute;
-  top: 566px;
-  left: 120px;
-  right: 120px;
+  top: 745px;
+  left: 40px;
+  right: 270px;
   padding: 10px 20px 12px;
   border-radius: 26px;
   color: #fff;
@@ -338,7 +338,7 @@ input {
   position: absolute;
   top: 760px;
   right: 14px;
-  width: 214px;
+  width: 236px;
   padding: 10px 8px 12px;
   border-radius: 22px;
   background: rgba(11, 74, 85, 0.72);
@@ -380,14 +380,51 @@ input {
 }
 
 .gift-icon {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
   font-size: 36px;
   line-height: 1;
+}
+
+.gift-icon img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+
+/* Icon phần thưởng nhỏ ở góc ảnh quà. */
+.gift-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  font-size: 20px;
+  font-style: normal;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.gift-thumb img,
+.gift-thumb-inline {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.gift-thumb {
+  text-align: center;
+  font-size: 22px;
 }
 
 .hud-gifts b {
   display: block;
   font-size: 21px;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .hud-gifts small {
@@ -461,20 +498,21 @@ input {
 
 .hud-guide {
   position: absolute;
-  left: 40px;
-  right: 40px;
-  top: 1730px;
+  left: 24px;
+  right: 24px;
+  top: 262px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 18px;
-  font-size: 28px;
+  gap: 8px 12px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--sea-deep);
   pointer-events: none;
 }
 
 .hud-guide span {
-  padding: 8px 22px;
+  padding: 6px 18px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.85);
 }
@@ -731,4 +769,48 @@ input {
 
 .log-error {
   color: var(--bad) !important;
+}
+
+/* Dòng hướng dẫn cắn: hàng riêng ngay dưới hướng dẫn thêm cá. */
+.hud-guide .hud-guide-bite {
+  font-size: 21px;
+  padding: 5px 18px;
+  white-space: nowrap;
+}
+
+/* Cá chúa + nhà vô địch: dòng chip dưới thời tiết. */
+.hud-crown {
+  position: absolute;
+  top: 206px;
+  left: 30px;
+  right: 30px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow: hidden;
+  font-size: 21px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.hud-crown span {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(11, 74, 85, 0.72);
+  color: #fff;
+}
+
+.hud-crown .is-king {
+  background: linear-gradient(90deg, #ffcf4a, #ff9a2e);
+  color: #5a2a00;
+}
+
+.level-setter {
+  display: inline-flex;
+  gap: 4px;
 }

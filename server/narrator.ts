@@ -11,11 +11,14 @@ export const AMBIENT = [
   "Bình luận cá rồi thả tim liên tục để nở trứng nhé!",
   "Thả tim thật nhiều để cá lớn nhanh và không bị đói nha!",
   "Vài trăm tim là cá lên một cấp đó, thả tim liên tục nào!",
-  "Cá to nhất bể sẽ được đội vương miện đó!",
+  "Cá cấp cao nhất bể sẽ thành cá chúa, đội vương miện đó!",
+  "Lên cấp mười lăm là cá đạt hình thái cuối, nhưng vẫn lên cấp tiếp tới một trăm nha!",
   "Tặng quà để nhận khiên, thuốc lớn nhanh, hay trứng rồng ánh kim nha!",
-  "Có răng nanh thì bình luận cắn, a còng, tên bạn để đớp cá nhỏ hơn!",
+  "Bình luận cắn, a còng, tên bạn để đớp cá nhỏ hơn mình, trúng thì cá kia mất mười cấp, mỗi phút rưỡi một lần nha!",
+  "Cá to nhất bể từ cấp mười lăm sẽ làm cá chúa, giữ ngôi mười phút là vô địch!",
+  "Cá mới nở có khiên năm phút, yên tâm nuôi nha!",
   "Trời mưa thì bình luận đớp để bắt côn trùng cho cá nhé!",
-  "Cảm ơn cả nhà đã ghé Bể Cá Hạnh Phúc hôm nay!",
+  "Cảm ơn cả nhà đã ghé Đại Chiến Bể Cá hôm nay!",
 ];
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
 import * as Phaser from "phaser";
-import { FISH_TEXTURES, MAX_STAGE, NAME_STAGE, REWARDS, SMALL_STAGE, SPECIES, STAGES, TIER_COLORS } from "@/shared/config";
+import { FISH_TEXTURES, FORM_STAGE, NAME_STAGE, REWARDS, SMALL_STAGE, SPECIES, STAGES, TIER_COLORS } from "@/shared/config";
 import type { EggView, FishView, Fx, Snapshot } from "@/shared/protocol";
 import type { EngineClient } from "./engine-client";
 import { EnvLayer } from "./env-layer";
@@ -11,12 +11,13 @@ import { CANVAS_H, CANVAS_W, SAND_Y, SURFACE_Y, SWIM_BOTTOM, SWIM_TOP } from "./
 const TEX_PX = 512;
 const FISH_SPAN = TEX_PX * 0.96;
 const ROPE_POINTS = 12;
+/** Hai hàng trứng ngay dưới dải hướng dẫn ở đầu màn. */
 const EGG_SLOTS = [
-  [150, 300], [390, 300], [630, 300], [870, 300],
-  [150, 480], [390, 480], [630, 480], [870, 480],
+  [150, 455], [390, 455], [630, 455], [870, 455],
+  [150, 610], [390, 610], [630, 610], [870, 610],
 ] as const;
 const EGG_SIZE = 84;
-const NAME_MAX = 12;
+const NAME_MAX = 22;
 /** Bong bóng "đói" (lời cá nói): hiện khi đói dưới mức này, tối đa MAX_BUBBLES cái cùng lúc. */
 const HUNGRY_AT = 30;
 const CRITICAL_AT = 15;
@@ -148,7 +149,7 @@ class TankScene extends Phaser.Scene {
     for (let i = 0; i < 26; i++) this.spawnBubble(true);
     this.surface = this.add.image(0, SURFACE_Y - 40, "surface").setOrigin(0).setDepth(2);
     this.envLayer.create();
-    this.waiting = this.text(CANVAS_W / 2, 600, "", 26, "#ffffff").setDepth(950);
+    this.waiting = this.text(CANVAS_W / 2, 715, "", 26, "#ffffff").setDepth(950);
 
     this.offFx = this.client.onFx((fx) => {
       // Scene đã bị hủy (đóng tab Admin, HMR, game.destroy) mà socket còn gửi hiệu ứng: bỏ qua.
@@ -425,7 +426,7 @@ class TankScene extends Phaser.Scene {
     const rope = this.add.rope(0, 0, key, undefined, points, true);
     rope.setColors(this.colorFor(view));
     const root = this.add.container(x, y, [rope]).setDepth(100 + view.stage * 10);
-    const name = this.text(0, 0, short(view.name), 22, TIER_COLORS[view.tier]);
+    const name = this.text(0, 0, `Lv${view.stage} ${short(view.name)}`, 22, TIER_COLORS[view.tier]);
     const crown = this.add.text(0, -34, "👑", { fontFamily: EMOJI, fontSize: "34px" }).setOrigin(0.5).setVisible(false);
     const bars = this.add.graphics();
     const label = this.add.container(x, y, [bars, name, crown]).setDepth(1000);
@@ -485,7 +486,9 @@ class TankScene extends Phaser.Scene {
     // Kiệt sức: nhợt màu, có dấu 😵 trước tên.
     s.rope.setColors(view.status === "exhausted" ? 0xd6e4e6 : this.colorFor(view));
     s.rope.setAlpha(view.status === "exhausted" ? 0.75 : 1);
-    s.name.setText(`${view.status === "exhausted" ? "😵 " : ""}${short(view.name)}${view.badges ? ` ${view.badges}` : ""}${view.bites ? ` ${"🦷".repeat(view.bites)}` : ""}`);
+    // "Lv12 Tên": cấp đứng trước tên, tên + cấp tô màu theo bậc cá (thường xám, hiếm xanh, rồng cam).
+    s.name.setText(`${view.status === "exhausted" ? "😵 " : ""}Lv${view.stage} ${short(view.name)}${view.badges ? ` ${view.badges}` : ""}${view.killBite ? " 🗡️" : view.canBite ? " 🦷" : ""}`);
+    s.name.setColor(TIER_COLORS[view.tier]);
     if (prev.stage !== view.stage) s.root.setDepth(100 + view.stage * 10);
     if (view.status === "alive" && prev.status === "exhausted") this.pickTarget(s);
   }
@@ -535,7 +538,7 @@ class TankScene extends Phaser.Scene {
       // Nổi lên nhưng dừng dưới hàng trứng.
       s.y = Math.max(SWIM_TOP + 140, s.y + s.vy * sec);
     } else {
-      const speed = (55 + (view.stage / MAX_STAGE) * 63) * (view.hunger < 30 ? 0.55 : 1) * (s.chaseUntil > this.time.now ? 2.4 : 1);
+      const speed = (55 + (Math.min(view.stage, FORM_STAGE) / FORM_STAGE) * 63) * (view.hunger < 30 ? 0.55 : 1) * (s.chaseUntil > this.time.now ? 2.4 : 1);
       const dx = s.tx - s.x;
       const dy = s.ty - s.y;
       const dist = Math.hypot(dx, dy);
@@ -575,7 +578,7 @@ class TankScene extends Phaser.Scene {
     // Nhãn: luôn thẳng, nằm trên đầu cá.
     const recent = this.time.now - this.localTime(view.activeAt) < 10_000;
     const vip = view.tier !== "common" || view.crowned;
-    // Đông cá thì chỉ giữ chi tiết cho cá vừa được chủ tương tác, cá đói, cá quà và vua bể.
+    // Đông cá thì chỉ giữ chi tiết cho cá vừa được chủ tương tác, cá đói, cá quà và cá chúa.
     const showName = crowd <= 35 || view.stage >= NAME_STAGE || vip || recent;
     const showBars = recent || view.hunger < 40 || view.status === "exhausted" || (crowd <= 12 && view.stage >= SMALL_STAGE);
     // Mỗi loài cao khác nhau (cá vàng tròn, cá neon thon): nhãn đặt sát mép trên của loài đó.
@@ -850,7 +853,10 @@ class TankScene extends Phaser.Scene {
         a.ty = vy;
       }
       this.time.delayedCall(450, () => {
-        if (fx.blocked) {
+        if (fx.missed) {
+          this.burst(vx, vy, 0xffffff, 0.8);
+          this.floatText(vx, vy - 70, "Hụt! 💨", "#e8fbff", 32);
+        } else if (fx.blocked) {
           this.burst(vx, vy, 0x8fe8ff, 1.5);
           this.floatText(vx, vy - 80, "🛡️ Chặn!", "#bff4ff", 34);
         } else {

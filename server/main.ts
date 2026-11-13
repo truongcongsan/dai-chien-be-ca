@@ -3,11 +3,12 @@ import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
-import { DEFAULT_AUDIO, DEFAULT_GIFTS, DEFAULT_RULES, MAX_STAGE, REWARDS, SPECIES, WEATHER_INFO, normalize, randomCommonSpecies, type AudioSettings, type GiftMapping, type Rules, type SpeciesId, type WeatherKind } from "../src/shared/config";
+import { DEFAULT_AUDIO, DEFAULT_GIFTS, DEFAULT_RULES, GIFTS_VERSION, MAX_STAGE, REWARDS, SPECIES, WEATHER_INFO, normalize, randomCommonSpecies, type AudioSettings, type GiftMapping, type Rules, type SpeciesId, type WeatherKind } from "../src/shared/config";
 import type { AdminState, ClientCommand, ConnectorStatus, Fx, ServerMessage, VoiceStatus } from "../src/shared/protocol";
 import { DemoAdapter } from "./adapters/demo";
 import type { SourceAdapter } from "./adapters/source";
 import { TikTokAdapter } from "./adapters/tiktok";
+import { GiftCatalog } from "./gift-catalog";
 import { Narrator, P } from "./narrator";
 import { Tank } from "./tank";
 import { Voice } from "./voice";
@@ -26,6 +27,10 @@ mkdirSync(dataDir, { recursive: true });
 const RULE_MIGRATIONS: Record<number, (keyof Rules)[]> = {
   2: ["likesPerGrowth", "likeGrowthCapPerMin"], // thả tim để lớn
   3: ["predatorLikesPerFish", "predatorMinLikes", "cleanPerFish"], // mèo, dọn bể khó hơn
+  4: ["cleanPerFish", "cleanMinNeeded", "cleanMaxNeeded"], // dọn bể cố định 10 comment
+  5: ["biteStageGap", "biteCooldownMs", "attackEnabled"], // ai cũng cắn được, lệch 1 cấp
+  6: ["biteStageGap", "biteCooldownMs", "biteAttackCooldownMs", "predatorLikesPerFish", "predatorMinLikes", "predatorVictims"], // Đại Chiến Bể Cá
+  7: ["biteStageGap", "biteLevelLoss", "crownMinStage"], // cắn hơn 1 cấp trừ 10 cấp, cá chúa từ Lv15
 };
 const RULES_VERSION = Math.max(...Object.keys(RULE_MIGRATIONS).map(Number));
 
@@ -43,10 +48,25 @@ if (existsSync(savePath)) {
     }
     tank.rules = { ...DEFAULT_RULES, ...savedRules };
     if (Array.isArray(data.gifts) && data.gifts.length) {
-      tank.gifts = data.gifts.filter((g: GiftMapping) => g.reward in REWARDS);
-      // Phần thưởng ra đời sau lần lưu (vd. Trứng hiếm): thêm quà mặc định của nó; phần thưởng cũ bị xóa tay thì không thêm lại.
-      const known: string[] = Array.isArray(data.knownRewards) ? data.knownRewards : Object.keys(REWARDS).filter((k) => k !== "rareEgg");
-      for (const g of DEFAULT_GIFTS) if (!known.includes(g.reward)) tank.gifts.push({ ...g });
+      if ((data.giftsVersion ?? 1) < GIFTS_VERSION) {
+        // Bảng quà mặc định đổi (Đại Chiến Bể Cá): bản lưu cũ nhận nguyên bảng mới một lần.
+        tank.gifts = DEFAULT_GIFTS.map((g) => ({ ...g }));
+      } else {
+        tank.gifts = data.gifts.filter((g: GiftMapping) => g.reward in REWARDS);
+        // Tên cũ gõ sai: quà TikTok là "Hand Heart" (id 5660).
+        for (const g of tank.gifts) if (g.giftName === "Hand Hearts") g.giftName = "Hand Heart";
+        // Phần thưởng ra đời sau lần lưu: thêm quà mặc định của nó; phần thưởng cũ bị xóa tay thì không thêm lại.
+        const known: string[] = Array.isArray(data.knownRewards) ? data.knownRewards : Object.keys(REWARDS).filter((k) => k !== "rareEgg");
+        for (const g of DEFAULT_GIFTS) if (!known.includes(g.reward)) tank.gifts.push({ ...g });
+      }
+      // Bỏ dòng trùng (cùng ID quà, hoặc cùng tên khi chưa có ID): giữ dòng đầu.
+      const seenGift = new Set<string>();
+      tank.gifts = tank.gifts.filter((g) => {
+        const key = g.giftId !== null ? `id:${g.giftId}` : `name:${normalize(g.giftName)}`;
+        if (seenGift.has(key)) return false;
+        seenGift.add(key);
+        return true;
+      });
     }
     tank.audio = { ...DEFAULT_AUDIO, ...(data.audio ?? {}) };
   } catch (error) {
@@ -54,9 +74,59 @@ if (existsSync(savePath)) {
   }
 }
 
+// ---------- danh sách quà TikTok + ảnh quà ----------
+
+const catalog = new GiftCatalog(dataDir);
+const CATALOG_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+let catalogBusy = false;
+
+/** Điền ID, giá thật và ảnh quà (tải về máy) cho bảng quà và quà chưa gán, theo danh sách quà của phòng. */
+async function applyCatalog() {
+  let changed = false;
+  for (const g of tank.gifts) {
+    const hit = catalog.find(g.giftId, g.giftName);
+    if (!hit) continue;
+    if (g.giftId === null) (g.giftId = hit.id), (changed = true);
+    if (g.coins !== hit.coins) (g.coins = hit.coins), (changed = true);
+    const image = await catalog.imageFile(hit.image);
+    if (image && g.image !== image) (g.image = image), (changed = true);
+  }
+  for (const u of tank.unmapped.values()) {
+    if (u.image) continue;
+    const hit = catalog.find(u.giftId, u.giftName);
+    const image = hit ? await catalog.imageFile(hit.image) : null;
+    if (image) u.image = image;
+  }
+  if (changed) persist();
+  return changed;
+}
+
+/** Tải danh sách quà của phòng (quá 6 giờ hoặc khi Admin bấm), rồi gắn ID/giá/ảnh. */
+async function refreshCatalog(username: string, force = false): Promise<{ ok: boolean; error?: string; data?: unknown }> {
+  if (!username) return { ok: false, error: "Chưa có username TikTok" };
+  if (catalogBusy) return { ok: false, error: "Đang tải danh sách quà" };
+  if (!force && Date.now() - catalog.fetchedAt < CATALOG_MAX_AGE_MS) {
+    await applyCatalog();
+    return { ok: true, data: catalog.gifts.length };
+  }
+  catalogBusy = true;
+  try {
+    const n = await catalog.refresh(username);
+    await applyCatalog();
+    tank.addLog("system", `Đã tải danh sách ${n} quà TikTok kèm ảnh`);
+    return { ok: true, data: n };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    tank.addLog("error", `Không tải được danh sách quà: ${message}`);
+    return { ok: false, error: message };
+  } finally {
+    catalogBusy = false;
+  }
+}
+
 function persist() {
   const tmp = `${savePath}.tmp`;
-  writeFileSync(tmp, JSON.stringify({ tank: tank.serialize(), rules: tank.rules, rulesVersion: RULES_VERSION, gifts: tank.gifts, knownRewards: Object.keys(REWARDS), audio: tank.audio, connector: { kind: connector.kind, username: connector.username } }));
+  writeFileSync(tmp, JSON.stringify({ tank: tank.serialize(), rules: tank.rules, rulesVersion: RULES_VERSION, gifts: tank.gifts, giftsVersion: GIFTS_VERSION, knownRewards: Object.keys(REWARDS), audio: tank.audio, connector: { kind: connector.kind, username: connector.username } }));
   renameSync(tmp, savePath);
 }
 
@@ -111,6 +181,7 @@ function useAdapter(next: SourceAdapter | null, kind: ConnectorStatus["kind"], u
     onStatus: (state, message) => {
       connector = { ...connector, state, message };
       syncLive();
+      if (state === "connected" && kind === "tiktok") void refreshCatalog(username);
       tank.addLog(state === "error" ? "error" : "system", message);
     },
   });
@@ -177,6 +248,15 @@ function runCommand(cmd: string, args: Record<string, unknown> = {}): { ok: bool
       tank.feed({ userId: fish.ownerId, uniqueId: fish.ownerId, name: fish.name }, now, { ignoreCooldown: true, hunger: 100, growth: 0 });
       return { ok: true };
     }
+    case "setFishLevel": {
+      // Đặc quyền Admin: đặt cấp bất kỳ cho cá của một người chơi.
+      const fish = tank.fish.get(String(args.id));
+      const stage = Number(args.stage);
+      if (!fish) return { ok: false, error: "Không thấy cá" };
+      if (!Number.isFinite(stage)) return { ok: false, error: "Cấp không hợp lệ" };
+      tank.setLevel(fish, stage);
+      return { ok: true };
+    }
     case "growFish": {
       const fish = tank.fish.get(String(args.id));
       if (!fish) return { ok: false, error: "Không thấy cá" };
@@ -218,11 +298,17 @@ function runCommand(cmd: string, args: Record<string, unknown> = {}): { ok: bool
       tank.gifts = clean;
       for (const g of clean) tank.unmapped.delete(g.giftId !== null ? `id:${g.giftId}` : `name:${normalize(g.giftName)}`);
       persist();
+      void applyCatalog();
       return { ok: true };
     }
     case "resetGifts":
       tank.gifts = DEFAULT_GIFTS.map((g) => ({ ...g }));
       persist();
+      void applyCatalog();
+      return { ok: true };
+    case "refreshGiftCatalog":
+      // Chạy nền: tải danh sách + ảnh mất vài giây; kết quả ghi vào nhật ký.
+      void refreshCatalog(String(args.username ?? "").replace(/^@/, "").trim() || connector.username, true);
       return { ok: true };
     case "testGift": {
       // Giả lập một người xem tặng quà (dùng được cả khi đang LIVE thật, để thử hiệu ứng).
@@ -254,6 +340,7 @@ function runCommand(cmd: string, args: Record<string, unknown> = {}): { ok: bool
       const next = { ...tank.audio };
       for (const [key, value] of Object.entries(args)) {
         if (!(key in DEFAULT_AUDIO)) continue;
+        if (key === "output" && value !== "stage" && value !== "admin") continue;
         const def = DEFAULT_AUDIO[key as keyof AudioSettings];
         if (typeof def === "boolean") (next as Record<string, unknown>)[key] = Boolean(value);
         else if (typeof def === "string") (next as Record<string, unknown>)[key] = String(value);
@@ -264,7 +351,7 @@ function runCommand(cmd: string, args: Record<string, unknown> = {}): { ok: bool
       return { ok: true };
     }
     case "testVoice": {
-      const text = String(args.text ?? "").trim() || "Xin chào cả nhà, chào mừng tới Bể Cá Hạnh Phúc!";
+      const text = String(args.text ?? "").trim() || "Xin chào cả nhà, chào mừng tới Đại Chiến Bể Cá!";
       if (!tank.audio.mc) return { ok: false, error: "MC đang tắt" };
       narrator.say(text.slice(0, 200), P.event, true);
       return { ok: true };
@@ -314,6 +401,16 @@ const server = createServer((req, res) => {
     const type = path.endsWith(".mp3") ? "audio/mpeg" : path.endsWith(".m4a") ? "audio/mp4" : "audio/wav";
     res.writeHead(200, { "Content-Type": type, "Cache-Control": "public, max-age=86400", "Access-Control-Allow-Origin": "*" });
     createReadStream(path).pipe(res);
+    return;
+  }
+  // Ảnh quà TikTok đã tải về máy (menu quà trên Stage, bảng quà trong Admin).
+  const giftFile = req.url?.match(/^\/gift-img\/([^/?]+)$/)?.[1];
+  const giftPath = giftFile && catalog.imagePath(giftFile);
+  if (giftPath && existsSync(giftPath)) {
+    const ext = giftPath.split(".").pop();
+    const type = ext === "png" ? "image/png" : ext === "jpg" ? "image/jpeg" : ext === "gif" ? "image/gif" : "image/webp";
+    res.writeHead(200, { "Content-Type": type, "Cache-Control": "public, max-age=604800", "Access-Control-Allow-Origin": "*" });
+    createReadStream(giftPath).pipe(res);
     return;
   }
   res.writeHead(404).end();
@@ -397,6 +494,9 @@ setInterval(() => {
 }, 250);
 setInterval(() => admins.size && broadcast({ type: "admin", state: adminState() }, admins), 1000);
 setInterval(persist, 10_000);
+// Quà lạ vừa được tặng: gắn ảnh nếu có trong danh sách quà.
+setInterval(() => void applyCatalog(), 30_000);
+void applyCatalog();
 
 server.listen(port, host, () => console.log(`[engine] ws://${host}:${port}/ws`));
 

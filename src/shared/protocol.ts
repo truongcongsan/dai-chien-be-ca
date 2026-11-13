@@ -14,11 +14,13 @@ export interface FishView {
   crowned: boolean;
   /** Huy hiệu của chủ cá, ví dụ "⚡" khi từng giữ cá sống qua bão. */
   badges: string;
+  /** Cá đã hồi xong lượt cắn (từng cắn ít nhất một lần). */
+  canBite: boolean;
   shield: boolean;
   boost: boolean;
   immortal: boolean;
-  /** Số lượt cắn còn lại. */
-  bites: number;
+  /** Đang giữ lượt "Cắn chết" (quà). */
+  killBite: boolean;
   /** Lần cuối chủ cá tương tác (ms server) — Stage dùng để bung nhãn chi tiết. */
   activeAt: number;
 }
@@ -60,9 +62,16 @@ export interface Snapshot {
   challenge: ChallengeView | null;
   audio: AudioSettings;
   /** Menu quà bên phải Stage. */
-  gifts: { giftName: string; coins: number; reward: RewardKey }[];
+  /** image: file ảnh quà thật (engine phục vụ ở /gift-img/<file>), null thì dùng icon phần thưởng. */
+  gifts: { giftName: string; coins: number; reward: RewardKey; image: string | null }[];
   top: { name: string; stage: number; growth: number; species: SpeciesId; crowned: boolean }[];
   totals: { hatched: number; died: number; fed: number; gifts: number; coins: number };
+  /** Màn chơi hiện tại (tăng mỗi khi có nhà vô địch). */
+  round: number;
+  /** Cá chúa đang giữ ngôi: giữ tới holdEndsAt (giờ server) thì vô địch. */
+  crown: { name: string; holdEndsAt: number } | null;
+  /** Nhà vô địch màn trước. */
+  champion: { name: string; round: number } | null;
 }
 
 export type Fx =
@@ -81,10 +90,11 @@ export type Fx =
   | { kind: "predatorWin" }
   | { kind: "predatorLose"; victims: string[] }
   | { kind: "gift"; name: string; giftName: string; reward: RewardKey; count: number; fishId: string | null }
-  | { kind: "bite"; attackerId: string; victimId: string; blocked: boolean }
+  | { kind: "bite"; attackerId: string; victimId: string; blocked: boolean; missed?: boolean }
   | { kind: "transform"; fishId: string }
   | { kind: "revive"; fishId: string }
-  | { kind: "foodRain" };
+  | { kind: "foodRain" }
+  | { kind: "champion"; name: string; round: number; how: "crown" | "doom" };
 
 export interface LogEntry {
   at: number;
@@ -117,7 +127,7 @@ export interface AdminState {
   demo: { running: boolean; rate: number };
   rules: Rules;
   gifts: GiftMapping[];
-  unmapped: { giftId: number | null; giftName: string; diamonds: number | null; count: number; lastAt: number }[];
+  unmapped: { giftId: number | null; giftName: string; diamonds: number | null; count: number; lastAt: number; image?: string | null }[];
   log: LogEntry[];
   fish: { id: string; name: string; species: SpeciesId; stage: number; growth: number; hunger: number; status: string }[];
   totals: Snapshot["totals"];

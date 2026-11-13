@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { StageAudio, type SfxName } from "@/client/audio";
-import { EngineClient, engineBase, useEngine } from "@/client/engine-client";
+import { EngineClient, engineBase, giftImageUrl, useEngine } from "@/client/engine-client";
 import { CANVAS_H, CANVAS_W } from "@/client/stage-size";
-import { REWARDS, SPECIES, STAGES, WEATHER_INFO, stageLabel } from "@/shared/config";
+import { REWARDS, SPECIES, STAGES, TIER_COLORS, WEATHER_INFO, stageLabel } from "@/shared/config";
 import type { ChallengeView, Fx, Snapshot } from "@/shared/protocol";
 
 /** `/?view=stage`: trang sạch cho OBS. Khung 1080×1920 được scale nguyên khối, không méo. */
@@ -21,7 +21,7 @@ export function StageView() {
       client.stop();
     };
   }, [client]);
-  return <main className="stage-page">{scale > 0 && <StageFrame client={client} scale={scale} muted={false} />}</main>;
+  return <main className="stage-page">{scale > 0 && <StageFrame client={client} scale={scale} role="stage" />}</main>;
 }
 
 /** Sự kiện game → tiếng hiệu ứng. */
@@ -38,10 +38,12 @@ function sfxFor(fx: Fx): SfxName | null {
       return "death";
     case "crown":
       return "crown";
+    case "champion":
+      return "fanfare";
     case "gift":
-      return fx.reward === "legendaryEgg" || fx.reward === "rareEgg" || fx.reward === "revive" || fx.reward === "foodRain" ? "fanfare" : "coin";
+      return ["legendaryEgg", "rareEgg", "revive", "foodRain", "megaPotion", "doom", "killBite"].includes(fx.reward) ? "fanfare" : "coin";
     case "bite":
-      return fx.blocked ? "shield" : "chomp";
+      return fx.missed ? "plop" : fx.blocked ? "shield" : "chomp";
     case "transform":
       return "fanfare";
     case "revive":
@@ -57,9 +59,14 @@ function sfxFor(fx: Fx): SfxName | null {
   }
 }
 
-/** `muted`: bản preview trong Admin không phát tiếng (OBS chỉ thu tiếng từ Stage). */
-export function StageFrame({ client, scale, muted }: { client: EngineClient; scale: number; muted: boolean }) {
+/**
+ * `role`: trang Stage thật hay bản preview trong Admin. Chỉ một nơi phát tiếng, theo cài đặt audio.output:
+ * "stage" (OBS) thì Stage phát, preview im; "admin" (TikTok LIVE Studio) thì Admin phát, Stage im.
+ */
+export function StageFrame({ client, scale, role }: { client: EngineClient; scale: number; role: "stage" | "admin" }) {
   useEngine(client);
+  const output = client.snapshot?.audio.output ?? "stage";
+  const muted = role === "admin" ? output !== "admin" : output === "admin";
   const host = useRef<HTMLDivElement>(null);
   const audio = useRef<StageAudio | null>(null);
   const [subtitle, setSubtitle] = useState<string | null>(null);
@@ -73,6 +80,9 @@ export function StageFrame({ client, scale, muted }: { client: EngineClient; sca
     a.onSubtitle = setSubtitle;
     a.start();
     const check = setInterval(() => setBlocked(a.blocked), 1000);
+    // Trình duyệt chỉ cho phát tiếng sau khi người dùng bấm vào trang: bấm bất kỳ đâu là bật.
+    const unlock = () => a.resume();
+    document.addEventListener("pointerdown", unlock);
     const off = client.onFx((fx) => {
       if (fx.kind === "narrate") return a.voice(fx.file ? `${engineBase().http}/voice/${fx.file}` : null, fx.text, fx.subtitle);
       const name = sfxFor(fx);
@@ -81,6 +91,7 @@ export function StageFrame({ client, scale, muted }: { client: EngineClient; sca
     return () => {
       off();
       clearInterval(check);
+      document.removeEventListener("pointerdown", unlock);
       a.stop();
     };
   }, [client, muted]);
@@ -176,7 +187,16 @@ function GiftMenu({ client, gifts }: { client: EngineClient; gifts: Snapshot["gi
       <ul key={page}>
         {shown.map((g) => (
           <li key={g.giftName} className={lit === g.giftName ? "is-lit" : ""}>
-            <span className="gift-icon">{REWARDS[g.reward].icon}</span>
+            <span className="gift-icon">
+              {g.image ? (
+                <>
+                  <img src={giftImageUrl(g.image)} alt={g.giftName} />
+                  <i className="gift-badge">{REWARDS[g.reward].icon}</i>
+                </>
+              ) : (
+                REWARDS[g.reward].icon
+              )}
+            </span>
             <div>
               <b>{REWARDS[g.reward].name}</b>
               <small>
@@ -248,9 +268,9 @@ function StageHud({ client, snap }: { client: EngineClient; snap: Snapshot }) {
         <div className="hud-title">
           <span className="hud-logo">🐠</span>
           <div>
-            <h1>Bể Cá Hạnh Phúc</h1>
+            <h1>Đại Chiến Bể Cá</h1>
             <p>
-              🐟 {snap.fish.length} con · 🥚 {snap.eggs.length + snap.waiting} trứng
+              Màn {snap.round} · 🐟 {snap.fish.length} con · 🥚 {snap.eggs.length + snap.waiting} trứng
               {!snap.live && <b className="hud-paused"> · ⏸ tạm dừng</b>}
             </p>
           </div>
@@ -259,8 +279,8 @@ function StageHud({ client, snap }: { client: EngineClient; snap: Snapshot }) {
           {snap.top.map((t, i) => (
             <li key={`${t.name}-${i}`} className={SPECIES[t.species].tier !== "common" ? "is-rare" : ""}>
               <span>{t.crowned ? "👑" : MEDALS[i]}</span>
-              <b>{t.name}</b>
-              <em>{stageLabel(t.stage)}</em>
+              <b style={{ color: TIER_COLORS[SPECIES[t.species].tier] }}>{t.name}</b>
+              <em>{stageLabel(t.stage, t.crowned)}</em>
             </li>
           ))}
         </ol>
@@ -274,6 +294,20 @@ function StageHud({ client, snap }: { client: EngineClient; snap: Snapshot }) {
         <span className={snap.env.murky ? "is-murky" : ""}>
           💧 Nước sạch {100 - snap.env.dirt}%
         </span>
+      </div>
+      <div className="hud-crown">
+        {snap.crown ? (
+          <span className="is-king">
+            👑 <b>{snap.crown.name}</b> giữ ngôi · vô địch sau {clock(snap.crown.holdEndsAt - (Date.now() + client.clockOffset))}
+          </span>
+        ) : (
+          <span>👑 Cá to nhất từ Lv15 làm cá chúa · giữ 10 phút là vô địch</span>
+        )}
+        {snap.champion && (
+          <span>
+            🏆 Màn {snap.champion.round}: <b>{snap.champion.name}</b>
+          </span>
+        )}
       </div>
       {snap.challenge && <ChallengePanel c={snap.challenge} now={Date.now() + client.clockOffset} />}
       <GiftMenu client={client} gifts={snap.gifts} />
@@ -290,6 +324,9 @@ function StageHud({ client, snap }: { client: EngineClient; snap: Snapshot }) {
         </span>
         <span>
           Thả tim ❤️ để cá <b>lớn</b> và no
+        </span>
+        <span className="hud-guide-bite">
+          <b>“cắn @tên”</b> 🦷 đớp cá nhỏ hơn mình: trúng thì −10 cấp · 1 lần/1p30s · bị cắn được 🛡️ 5 phút
         </span>
       </footer>
     </>

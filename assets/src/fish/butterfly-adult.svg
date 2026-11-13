@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+  <radialGradient id="iris" cx="0.45" cy="0.4" r="0.65">
+    <stop offset="0" stop-color="#4A2C1E"/><stop offset="0.7" stop-color="#1E110B"/><stop offset="1" stop-color="#0E0805"/>
+  </radialGradient>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+  <filter id="soft4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+  <filter id="soft16" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter></defs>
+  <defs>
+    <radialGradient id="body" cx="0.55" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#FFE873"/><stop offset="0.55" stop-color="#FFCA1F"/><stop offset="1" stop-color="#E39E0C"/>
+    </radialGradient>
+    <linearGradient id="fin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFCA1F"/><stop offset="1" stop-color="#FFE873" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="face" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bodyClip"><path id="bodyPath" d="M790 470 C770 360 680 300 580 302 C470 305 405 390 400 505 C405 620 470 705 580 708 C680 710 770 650 790 545 C820 535 850 522 872 512 C878 508 878 500 872 496 C850 486 820 476 790 470 Z"/></clipPath>
+  </defs>
+  <g id="art">
+    <!-- đuôi nhỏ -->
+    <path d="M410 470 C370 435 310 420 285 435 C305 480 305 530 285 575 C310 590 370 575 410 540 Z" fill="url(#fin)" stroke="#E39E0C" stroke-width="3"/>
+    <!-- vây lưng + vây hậu môn ôm theo thân, viền tối mảnh -->
+    <path d="M700 330 C640 250 520 235 440 300 C410 350 400 400 405 440 C450 380 520 330 600 318 C640 312 680 318 700 330 Z" fill="url(#fin)" stroke="#2B2B33" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M700 680 C640 760 520 775 440 710 C410 660 400 610 405 570 C450 630 520 680 600 692 C640 698 680 692 700 680 Z" fill="url(#fin)" stroke="#2B2B33" stroke-width="5" stroke-linejoin="round"/>
+    <use href="#bodyPath" fill="url(#body)"/>
+    <g clip-path="url(#bodyClip)">
+      <path d="M470 330 L400 690" stroke="#E07A10" stroke-width="7" opacity="0.35" stroke-linecap="round"/><path d="M525 340 L455 684" stroke="#E07A10" stroke-width="7" opacity="0.35" stroke-linecap="round"/><path d="M580 350 L510 678" stroke="#E07A10" stroke-width="7" opacity="0.35" stroke-linecap="round"/><path d="M635 360 L565 672" stroke="#E07A10" stroke-width="7" opacity="0.35" stroke-linecap="round"/><path d="M690 370 L620 666" stroke="#E07A10" stroke-width="7" opacity="0.35" stroke-linecap="round"/><path d="M745 380 L675 660" stroke="#E07A10" stroke-width="7" opacity="0.35" stroke-linecap="round"/>
+      <rect x="690" y="290" width="200" height="440" fill="url(#face)"/>
+      <!-- sọc đen qua mắt -->
+      <path d="M770 300 C745 400 745 610 770 720" stroke="#2B2B33" stroke-width="44" fill="none"/>
+      <ellipse cx="590" cy="700" rx="230" ry="60" fill="#E39E0C" opacity="0.4" filter="url(#soft16)"/>
+    </g>
+    
+    <!-- vây ngực trong -->
+    <path d="M700 545 C670 560 655 590 660 615 C690 610 712 585 716 556 Z" fill="url(#fin)" opacity="0.9"/>
+    <path d="M520 340 C600 318 680 322 740 350" stroke="#fff" stroke-width="18" fill="none" stroke-linecap="round" opacity="0.6" filter="url(#soft4)"/>
+    <circle cx="768" cy="470" r="48" fill="#2B2B33"/>
+    
+  <circle cx="768" cy="470" r="44.800000000000004" fill="#FFF6EC" opacity="0.55"/>
+  <circle cx="768" cy="470" r="40" fill="url(#iris)"/>
+  <ellipse cx="780" cy="456" rx="14.399999999999999" ry="12.8" fill="#fff"/>
+  <circle cx="752.8" cy="486.8" r="6" fill="#fff" opacity="0.9"/>
+    <ellipse cx="800" cy="540" rx="20" ry="11" fill="#FF8FAB" opacity="0.5" filter="url(#soft4)"/>
+  </g></svg>
